@@ -19,6 +19,7 @@ import { Note } from './ui/bits';
 import { Hallmark, Wordmark } from './ui/brand';
 import { Icon } from './ui/icons';
 import { AskDomesday } from './ui/ask';
+import { openAsk, Orb } from './ui/orb';
 import { markTourSeen, Tour, tourSeen } from './ui/tour';
 
 const TOUR_EVENT = 'domesday:tour';
@@ -146,6 +147,13 @@ function TopBar({ view }: { view: ViewId }): ReactElement {
           ))}
         </nav>
         <div className="topbar__end">
+          {site ? (
+            <button type="button" className="cmd-ask" onClick={() => openAsk()} aria-label="Ask Domesday">
+              <Orb size={18} />
+              <span className="cmd-ask__text">Ask Domesday anything</span>
+              <kbd>Ctrl K</kbd>
+            </button>
+          ) : null}
           {site ? <span className="topbar__site ui-body-s">{site.name}</span> : null}
           <PersonaMenu />
         </div>

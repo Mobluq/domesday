@@ -4,6 +4,7 @@ import { applyChange, describeChange, resolveChanges, splitAnswer, type Resolved
 import { canLabel } from '../data/actions';
 import { useData, usePersona, useToast } from '../data/store';
 import { Icon } from './icons';
+import { Orb } from './orb';
 
 /** Line numbers and register IDs stand out in answers, as they do everywhere else. */
 function withRefs(text: string): ReactNode[] {
@@ -78,11 +79,29 @@ export function AskDomesday({ hideLauncher }: { hideLauncher?: boolean }): React
   const [error, setError] = useState<string | null>(null);
   const [allow, setAllow] = useState(() => readPerm(personId));
   const notes = useRef<string[]>([]);
+  const [queued, setQueued] = useState<string | null>(null);
+  const sendRef = useRef<(q: string) => void>(() => undefined);
   const ctl = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => setAllow(readPerm(personId)), [personId]);
+  // Other screens hand questions over ("Ask about this").
+  useEffect(() => {
+    const onAsk = (e: Event): void => {
+      const q = (e as CustomEvent<{ question: string | null }>).detail?.question ?? null;
+      setOpen(true);
+      if (q) setQueued(q);
+    };
+    window.addEventListener('domesday:ask', onAsk);
+    return () => window.removeEventListener('domesday:ask', onAsk);
+  }, []);
+  useEffect(() => {
+    if (queued && open) {
+      sendRef.current(queued);
+      setQueued(null);
+    }
+  }, [queued, open]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -148,6 +167,8 @@ export function AskDomesday({ hideLauncher }: { hideLauncher?: boolean }): React
     if (!r.ok) setError(r.message);
   };
 
+  sendRef.current = (q: string) => void send(q);
+
   const apply = async (key: string, change: ResolvedChange): Promise<void> => {
     setCards((c) => ({ ...c, [key]: { state: 'busy' } }));
     const r = await applyChange(change, data, personId);
@@ -162,8 +183,8 @@ export function AskDomesday({ hideLauncher }: { hideLauncher?: boolean }): React
     if (hideLauncher) return null;
     return (
       <button type="button" className="ask-launch" onClick={() => setOpen(true)} aria-label="Ask about the inventory" title="Ask about the inventory (Ctrl K)">
-        <Icon name="message" size={20} />
-        <span>Ask</span>
+        <Orb size={22} />
+        <span>Ask Domesday</span>
       </button>
     );
   }
@@ -174,9 +195,10 @@ export function AskDomesday({ hideLauncher }: { hideLauncher?: boolean }): React
   return (
     <section className="ask" role="dialog" aria-label="Ask about the inventory">
       <header className="ask__head">
-        <div className="stack-xs" style={{ minWidth: 0 }}>
-          <span className="ui-title-s">Ask about the inventory</span>
-          <span className="ui-body-s muted">{site.name} · answers from the walks and the register</span>
+        <Orb size={34} thinking={busy} />
+        <div className="stack-xs" style={{ minWidth: 0, flex: 1 }}>
+          <span className="ask__title">Ask Domesday</span>
+          <span className="ask__sub">{busy ? 'Reading the walk and the books…' : `${site.name} · answers from the walks and the register`}</span>
         </div>
         <div className="row" style={{ gap: 4, flexWrap: 'nowrap' }}>
           {turns.length ? (
@@ -222,7 +244,7 @@ export function AskDomesday({ hideLauncher }: { hideLauncher?: boolean }): React
 
       <div className="ask__body" aria-live="polite">
         {!available ? (
-          <p className="ui-body muted">Questions need Claude, which isn't connected in this view. On the website, it uses the Anthropic key set in Vercel.</p>
+          <p className="ui-body muted">Domesday AI isn't connected in this view. On the website, it uses the Anthropic key set in Vercel.</p>
         ) : turns.length === 0 ? (
           <div className="stack-m">
             <p className="ui-body muted">
@@ -251,6 +273,9 @@ export function AskDomesday({ hideLauncher }: { hideLauncher?: boolean }): React
           const pending = proposal ? proposal.changes.filter((_, j) => (cards[`${i}:${j}`]?.state ?? 'idle') === 'idle') : [];
           return (
             <div key={i} className="ask__a">
+              <span className="ask__who">
+                <Orb size={14} /> Domesday
+              </span>
               <Answer text={display} />
               {proposal && current ? (
                 <div className="ask__changes">
@@ -307,7 +332,10 @@ export function AskDomesday({ hideLauncher }: { hideLauncher?: boolean }): React
         })}
         {answer !== null ? (
           <div className="ask__a" data-streaming>
-            {splitAnswer(answer).display ? <Answer text={splitAnswer(answer).display} /> : <span className="ask__dots" aria-label="Thinking" />}
+            <span className="ask__who">
+              <Orb size={14} thinking /> Domesday
+            </span>
+            {splitAnswer(answer).display ? <Answer text={splitAnswer(answer).display} /> : <span className="ask__thinking">Thinking</span>}
           </div>
         ) : null}
         {error ? <p className="ask__error">{error}</p> : null}
@@ -348,7 +376,7 @@ export function AskDomesday({ hideLauncher }: { hideLauncher?: boolean }): React
           </button>
         )}
       </form>
-      <p className="ask__foot">Claude can make mistakes. Check the line it names before acting on it.</p>
+      <p className="ask__foot">Domesday AI can make mistakes. Check the line it names before acting on it.</p>
     </section>
   );
 }

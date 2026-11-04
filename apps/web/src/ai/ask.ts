@@ -247,7 +247,7 @@ export async function ask(rt: Runtime, system: string, turns: readonly AskTurn[]
       return { ok: false, message: (e as Error).message || "Couldn't reach the assistant.", text };
     }
   }
-  if (!rt.sample) return { ok: false, message: 'Questions need Claude, which is not connected in this view.', text: '' };
+  if (!rt.sample) return { ok: false, message: 'Domesday AI is not connected in this view.', text: '' };
   // The artifact's sample takes one prompt: the inventory, the conversation, then the question.
   const history = turns.map((t) => `${t.role === 'user' ? 'QUESTION' : 'YOUR ANSWER'}: ${t.content}`).join('\n\n');
   let prompt = `${system}\n\nCONVERSATION\n${history}\n\nAnswer the last QUESTION.`;

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 /** The views worth linking to. Only a plain #name passes through an artifact link. */
 export const VIEWS = [
-  { id: 'walks', label: 'Walks' },
+  { id: 'walks', label: 'Overview' },
   { id: 'capture', label: 'Capture' },
   { id: 'review', label: 'Review' },
   { id: 'compare', label: 'Comparison' },
