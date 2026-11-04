@@ -89,7 +89,15 @@ const answerFor = (prompt) => {
   return window.__answers[room] || { lines: [], privacy: [], room_note: 'Nothing recognised.' };
 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const fakeSample = Object.assign(async (input) => ({ text: 'ok', truncated: false, modelTierApplied: 'default' }), {
+const fakeSample = Object.assign(async (input, opts = {}) => {
+  if (String(input).includes('inventory assistant inside Domesday')) {
+    window.__askPrompts = (window.__askPrompts || []).concat([{ prompt: input, tier: opts.modelTier }]);
+    const text = 'Six register lines were not seen on this walk, with a book value of ₦3,970,000.\\n- FA-1043 Television, Sony 43-inch, Room 204\\n- FA-0391 Laptop, HP ProBook 450, Room 112';
+    for (let i = 1; i <= 4; i++) { await sleep(120); opts.onText && opts.onText({ text: text.slice(0, Math.floor(text.length * i / 4)), delta: '' }); }
+    return { text, truncated: false };
+  }
+  return { text: 'ok', truncated: false, modelTierApplied: 'default' };
+}, {
   json: async (input, opts = {}) => {
     window.__prompts = (window.__prompts || []).concat([{ prompt: input, images: (opts.images || []).length }]);
     const ans = answerFor(input);
@@ -207,6 +215,18 @@ await page.getByRole('button', { name: 'Export corrections' }).click();
 await page.waitForTimeout(300);
 const csv = await page.evaluate(() => window.__saved.find((s) => s.filename.endsWith('.csv')));
 step(`corrections file ${csv?.filename}: ${csv ? csv.text.split('\n').length - 2 : 0} rows`);
+
+// Ask Domesday: one tap on a suggested question.
+await page.getByRole('button', { name: 'Ask about the inventory' }).click();
+await page.getByRole('dialog', { name: 'Ask about the inventory' }).waitFor();
+await shot(page, '22-ask-empty', false);
+await page.locator('.ask__idea').first().click();
+await page.locator('.ask__a').filter({ hasText: 'were not seen on this walk' }).waitFor({ timeout: 10000 });
+await page.locator('.ask__a[data-streaming]').waitFor({ state: 'detached', timeout: 10000 });
+const asked = await page.evaluate(() => window.__askPrompts?.[0] ?? { prompt: '', tier: null });
+step(`assistant answered on the ${asked.tier} tier; its prompt carried the register (${asked.prompt.includes('FIXED ASSET REGISTER')}), numbered lines (${/Line \d{3} \|/.test(asked.prompt)}) and the not-seen list (${asked.prompt.includes('Not seen:')})`);
+await shot(page, '23-ask-answer', false);
+await page.getByRole('dialog', { name: 'Ask about the inventory' }).getByRole('button', { name: 'Close' }).click();
 
 await page.goto(`${base}#report`);
 await page.getByRole('button', { name: 'Issue the report' }).click();

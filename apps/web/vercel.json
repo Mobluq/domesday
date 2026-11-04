@@ -6,6 +6,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/claude.ts": { "maxDuration": 60 },
+    "api/ask.ts": { "maxDuration": 60 },
     "api/assets.ts": { "maxDuration": 30 },
     "api/db.ts": { "maxDuration": 20 },
     "api/blob.ts": { "maxDuration": 20 }

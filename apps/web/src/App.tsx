@@ -18,6 +18,7 @@ import { go, useView, VIEWS, type ViewId } from './route';
 import { Note } from './ui/bits';
 import { Hallmark, Wordmark } from './ui/brand';
 import { Icon } from './ui/icons';
+import { AskDomesday } from './ui/ask';
 import { markTourSeen, Tour, tourSeen } from './ui/tour';
 
 const TOUR_EVENT = 'domesday:tour';
@@ -380,6 +381,7 @@ function Shell(): ReactElement {
         </div>
       ) : null}
       {page}
+      {site && loaded ? <AskDomesday hideLauncher={view === 'capture'} /> : null}
       {tourOpen && site ? <Tour role={person?.role} name={person?.name ?? null} onClose={closeTour} /> : null}
       <Toasts />
     </div>

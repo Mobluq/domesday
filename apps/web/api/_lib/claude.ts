@@ -87,7 +87,7 @@ export function messagesBody(req: ClaudeRequest, model: string): Record<string, 
   };
 }
 
-function upstreamError(status: number, payload: unknown): HttpError {
+export function upstreamError(status: number, payload: unknown): HttpError {
   const err = isRecord(payload) && isRecord(payload.error) ? payload.error : {};
   const type = typeof err.type === 'string' ? err.type : '';
   const detail = typeof err.message === 'string' ? err.message.replace(/\s+/g, ' ').slice(0, 300) : '';

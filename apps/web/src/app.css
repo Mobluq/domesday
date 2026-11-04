@@ -241,7 +241,7 @@ h1, h2 { text-wrap: balance; }
 .frame-pick img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 3px; }
 
 @media print {
-  body::before, .topbar, .page-head, .note, .toasts, .no-print, .sheets > a { display: none !important; }
+  body::before, .topbar, .page-head, .note, .toasts, .no-print, .sheets > a, .ask, .ask-launch { display: none !important; }
   html, body, .app { background: #ffffff !important; }
   .page { padding: 0 !important; max-width: none !important; }
   .sheets { padding: 0 !important; gap: 0 !important; }
@@ -343,3 +343,30 @@ td .cam-hint { margin-right: 8px; }
 .hold-exit[data-holding] .hold-exit__ring { animation: hold var(--hold, 1500ms) linear forwards; }
 @property --fill { syntax: "<angle>"; inherits: false; initial-value: 0turn; }
 @keyframes hold { to { --fill: 1turn; } }
+
+/* ---------- Ask Domesday: questions about the inventory ---------- */
+.ask-launch { position: fixed; z-index: 45; right: max(20px, env(safe-area-inset-right, 0px)); bottom: max(20px, env(safe-area-inset-bottom, 0px)); display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 18px 0 14px; border: 0; border-radius: 999px; background: var(--button-primary); color: var(--button-primary-text); font: 700 15px/20px var(--font-sans); box-shadow: var(--shadow-popover); cursor: pointer; }
+.ask-launch:hover { transform: translateY(-1px); }
+.ask { position: fixed; z-index: 55; right: max(20px, env(safe-area-inset-right, 0px)); bottom: max(20px, env(safe-area-inset-bottom, 0px)); width: min(440px, calc(100vw - 40px)); height: min(680px, calc(100vh - 40px)); height: min(680px, calc(100dvh - 40px)); display: flex; flex-direction: column; background: var(--surface-raised); border: var(--stroke-hairline) solid var(--rule-strong); border-radius: var(--radius-m); box-shadow: var(--shadow-popover); overflow: hidden; animation: rise 200ms cubic-bezier(0.23, 1, 0.32, 1); }
+@media (max-width: 560px) { .ask { inset: 0; width: auto; height: auto; border-radius: 0; border: 0; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); } }
+.ask__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 14px 12px 18px; border-bottom: var(--stroke-hairline) solid var(--rule); }
+.ask__icon-btn { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: var(--radius-s); background: transparent; color: var(--text-secondary); cursor: pointer; }
+.ask__icon-btn:hover { background: var(--row-hover); color: var(--text); }
+.ask__body { flex: 1; overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; overscroll-behavior: contain; }
+.ask__ideas { display: flex; flex-direction: column; gap: 8px; }
+.ask__idea { text-align: left; padding: 10px 12px; border-radius: var(--radius-s); border: var(--stroke-hairline) solid var(--rule-strong); background: var(--surface); color: var(--text); font: 400 14px/20px var(--font-sans); cursor: pointer; }
+.ask__idea:hover { background: var(--row-hover); }
+.ask__q { align-self: flex-end; max-width: 85%; margin: 0; padding: 10px 14px; border-radius: 14px 14px 4px 14px; background: var(--button-primary); color: var(--button-primary-text); font: 400 15px/22px var(--font-sans); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ask__a { align-self: flex-start; max-width: 100%; font: 400 15px/23px var(--font-sans); color: var(--text); overflow-wrap: anywhere; }
+.ask__a p { margin: 0 0 8px; }
+.ask__a p:last-child { margin-bottom: 0; }
+.ask__a ul { margin: 0 0 8px; padding-left: 18px; display: grid; gap: 4px; }
+.ask__a[data-streaming] > :last-child::after { content: ""; display: inline-block; width: 7px; height: 15px; margin-left: 2px; vertical-align: -2px; background: var(--text-secondary); animation: pulse 1s steps(2) infinite; }
+.ask__ref { font-family: var(--font-mono); font-size: 13px; padding: 0 3px; border-radius: 3px; background: var(--surface-sunken); white-space: nowrap; }
+.ask__dots { display: inline-block; width: 28px; height: 10px; background: radial-gradient(circle, var(--text-secondary) 3px, transparent 3.5px) 0 50% / 10px 10px repeat-x; animation: pulse 1s ease-in-out infinite; }
+.ask__error { margin: 0; padding: 10px 12px; border-radius: var(--radius-s); background: var(--not-seen-tint); color: var(--not-seen-text); font: 400 14px/20px var(--font-sans); }
+.ask__form { display: flex; align-items: flex-end; gap: 8px; padding: 10px 12px 4px; border-top: var(--stroke-hairline) solid var(--rule); }
+.ask__input { flex: 1; min-height: 44px; max-height: 140px; resize: none; padding: 11px 12px; border-radius: var(--radius-s); border: var(--stroke-hairline) solid var(--border-control); background: var(--surface); color: var(--text); font: 400 15px/21px var(--font-sans); field-sizing: content; }
+.ask__send { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border: 0; border-radius: var(--radius-s); background: var(--button-primary); color: var(--button-primary-text); cursor: pointer; }
+.ask__send:disabled { opacity: 0.35; cursor: not-allowed; }
+.ask__foot { margin: 0; padding: 4px 14px 12px; font: 400 12px/16px var(--font-sans); color: var(--text-tertiary); }

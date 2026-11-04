@@ -98,6 +98,11 @@ export function saveAccessCode(code: string): void {
   writeAccessCookie(value);
 }
 
+/** The access code this browser saved for the website, if any (sent with direct API calls). */
+export function currentAccessCode(): string | null {
+  return savedAccessCode();
+}
+
 function savedAccessCode(): string | null {
   try {
     return localStorage.getItem(ACCESS_CODE_KEY)?.trim() || null;
