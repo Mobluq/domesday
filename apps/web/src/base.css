@@ -1,0 +1,22 @@
+/* Base styles on the Domesday Design System tokens. Components come from @domesday/tokens/components.css. */
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-sans);
+}
+
+main,
+nav {
+  padding: var(--space-4) max(var(--space-4), 2.5rem);
+}
+
+nav a {
+  color: var(--text);
+}
+
+nav a[aria-current='page'] {
+  font-weight: 700;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-s);
+}

@@ -1,0 +1,9 @@
+-- Reverses 0010.
+DROP TABLE stage_switches;
+DROP TABLE model_calls;
+DROP TABLE model_routes;
+DROP TABLE usage_records;
+DROP TABLE tenant_plans;
+DROP TABLE notification_messages;
+DROP TABLE walk_schedules;
+DROP TABLE idempotency_keys;

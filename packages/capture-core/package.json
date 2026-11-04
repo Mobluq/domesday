@@ -1,0 +1,24 @@
+{
+  "name": "@domesday/capture-core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pure TypeScript logic for the Domesday phone app: walk and room states, clip fingerprints, capture metadata and the offline upload queue.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.src.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@domesday/domain": "workspace:*",
+    "@noble/hashes": "^2.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "~6.0.3",
+    "vitest": "^5.1.0"
+  }
+}

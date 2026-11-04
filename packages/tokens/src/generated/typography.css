@@ -1,0 +1,22 @@
+/* Generated from design-system/tokens.json by scripts/sync-design-system.ts. Do not edit by hand. */
+
+/* Record */
+.display-xl { font-family: var(--font-display); font-size: 64px; line-height: 68px; font-weight: 500; letter-spacing: -0.02em; font-variation-settings: 'opsz' 72; }
+.display-l { font-family: var(--font-display); font-size: 40px; line-height: 46px; font-weight: 500; letter-spacing: -0.015em; font-variation-settings: 'opsz' 48; }
+.display-m { font-family: var(--font-display); font-size: 28px; line-height: 34px; font-weight: 500; letter-spacing: -0.01em; font-variation-settings: 'opsz' 28; }
+.reading { font-family: var(--font-display); font-size: 17px; line-height: 27px; font-weight: 400; font-variation-settings: 'opsz' 16; }
+.reading-s { font-family: var(--font-display); font-size: 14px; line-height: 21px; font-weight: 400; font-variation-settings: 'opsz' 12; }
+
+/* Interface */
+.ui-title-l { font-family: var(--font-sans); font-size: 24px; line-height: 30px; font-weight: 700; }
+.ui-title-m { font-family: var(--font-sans); font-size: 18px; line-height: 24px; font-weight: 700; }
+.ui-body { font-family: var(--font-sans); font-size: 15px; line-height: 22px; font-weight: 400; }
+.ui-body-strong { font-family: var(--font-sans); font-size: 15px; line-height: 22px; font-weight: 700; }
+.ui-body-s { font-family: var(--font-sans); font-size: 13px; line-height: 18px; font-weight: 400; }
+.ui-label { font-family: var(--font-sans); font-size: 11px; line-height: 14px; font-weight: 700; letter-spacing: 0.08em; }
+.ui-capture { font-family: var(--font-sans); font-size: 20px; line-height: 26px; font-weight: 700; }
+
+/* Data */
+.data-l { font-family: var(--font-mono); font-size: 22px; line-height: 28px; font-weight: 500; }
+.data-m { font-family: var(--font-mono); font-size: 14px; line-height: 20px; font-weight: 400; }
+.data-s { font-family: var(--font-mono); font-size: 12px; line-height: 16px; font-weight: 400; }

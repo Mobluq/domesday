@@ -1,0 +1,3298 @@
+openapi: 3.1.0
+info:
+  title: Domesday API
+  version: 0.1.0
+  summary: Walk-through fixed asset register for organisations with many sites.
+  description: |
+    The contract for the Domesday modular monolith (PRD Part 6). Written before
+    the code; the server validates every request against this document.
+
+    Conventions:
+
+    - Every list is paginated by cursor (DMS-157). Pass `cursor` from the previous
+      page's `nextCursor`, and `limit` from 1 to 200 (default 50). `nextCursor` is
+      null on the last page.
+    - Every write takes an `Idempotency-Key` header. Repeating a write with the same
+      key and body returns the first response with `Idempotent-Replayed: true`. The
+      same key with a different body is refused with `idempotency_key_reused`.
+    - Every error uses one format: `application/problem+json` (RFC 9457) with a
+      machine-readable `code`.
+    - Every route passes through one shared authorisation layer.
+      `x-domesday-permission` names the permission a route needs and
+      `x-domesday-objects` the objects checked before the handler runs (object-level
+      authorisation, backed by row-level security in the database). Routes with
+      `security: []` are public.
+    - Money is in whole kobo. Times are RFC 3339 in UTC.
+    - Unblurred originals, faces and people never appear in responses; frames are
+      blurred derivatives behind signed URLs that expire after 5 minutes.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+tags:
+  - name: platform
+    description: Service health.
+  - name: tenancy-access
+    description: Tenant, User, RoleGrant, PartnerGrant. Checks access to objects and lists sites in scope.
+  - name: sites
+    description: Site, Building, Floor, Room. Room tree and provisional rooms.
+  - name: register
+    description: Category, RegisterImport, RegisterLine. Register import with saved column mapping.
+  - name: capture
+    description: Walk, Clip, LabelShot, upload sessions. Start walk, confirm upload, walk status.
+  - name: processing
+    description: Job, StageRun, Frame, Track, Proposal. Process and reprocess walks.
+  - name: review
+    description: ReviewDecision, AssetLine versions. Decide lines, approve walks.
+  - name: assets
+    description: Asset identity across walks and condition history.
+  - name: reconciliation
+    description: Reconciliation, ReconMatch. Reconcile with the books and export corrections.
+  - name: comparison
+    description: Comparison, ChangeItem, Investigation.
+  - name: reports
+    description: Report and verification code.
+  - name: evidence
+    description: Fingerprints, retention, legal holds, AuditEvent.
+  - name: notifications
+    description: Messages and walk schedules.
+  - name: billing
+    description: Plan and usage.
+  - name: ai-gateway
+    description: Model routes and metered model calls. Internal only; no public operations.
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags: [platform]
+      summary: Liveness check.
+      security: []
+      responses:
+        '200':
+          description: The service is running.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ---------------------------------------------------------------- tenancy-access
+  /me:
+    get:
+      operationId: getCurrentPrincipal
+      tags: [tenancy-access]
+      summary: The signed-in user, their roles, site scopes and permissions.
+      x-domesday-permission: session:read
+      responses:
+        '200':
+          description: The current principal.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Principal' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /tenant/settings:
+    get:
+      operationId: getTenantSettings
+      tags: [tenancy-access]
+      summary: Retention, approver separation, capitalisation threshold and training consent.
+      x-domesday-permission: tenant:settings
+      responses:
+        '200':
+          description: The tenant's settings.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenantSettings' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateTenantSettings
+      tags: [tenancy-access]
+      summary: Change tenant settings (DMS-007, DMS-054, DMS-136).
+      x-domesday-permission: tenant:settings
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTenantSettingsRequest' }
+      responses:
+        '200':
+          description: The updated settings.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenantSettings' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /partner-grants:
+    get:
+      operationId: listPartnerGrants
+      tags: [tenancy-access]
+      summary: Partner access this tenant has granted (DMS-121).
+      x-domesday-permission: partners:manage
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of partner grants.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PartnerGrantPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPartnerGrant
+      tags: [tenancy-access]
+      summary: Grant an audit firm or broker access, scoped by site and time (DMS-121).
+      x-domesday-permission: partners:manage
+      x-domesday-objects:
+        - { in: body, name: siteIds, type: site, many: true }
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePartnerGrantRequest' }
+      responses:
+        '201':
+          description: The grant.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PartnerGrant' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /partner-grants/{grantId}/revoke:
+    post:
+      operationId: revokePartnerGrant
+      tags: [tenancy-access]
+      summary: Revoke partner access. Access is refused from the moment of revocation (DMS-121).
+      x-domesday-permission: partners:manage
+      x-domesday-objects:
+        - { in: path, name: grantId, type: partner_grant }
+      parameters:
+        - $ref: '#/components/parameters/GrantId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: The revoked grant.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PartnerGrant' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /partner/client-tenants:
+    get:
+      operationId: listPartnerClientTenants
+      tags: [tenancy-access]
+      summary: Partner workspace. Exactly the client tenants with a live grant to this partner (DMS-120).
+      x-domesday-permission: partner:workspace
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of client tenants.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PartnerClientTenantPage' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ---------------------------------------------------------------- sites
+  /sites:
+    get:
+      operationId: listSites
+      tags: [sites]
+      summary: Sites in the caller's scope (DMS-132).
+      x-domesday-permission: sites:read
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of sites.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SitePage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createSite
+      tags: [sites]
+      summary: Create a site (DMS-001). Refused with plan_limit_reached past the plan's site limit (DMS-133).
+      x-domesday-permission: sites:manage
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSiteRequest' }
+      responses:
+        '201':
+          description: The site.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Site' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /sites/{siteId}:
+    get:
+      operationId: getSite
+      tags: [sites]
+      x-domesday-permission: sites:read
+      x-domesday-objects:
+        - { in: path, name: siteId, type: site }
+      parameters:
+        - $ref: '#/components/parameters/SiteId'
+      responses:
+        '200':
+          description: The site.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Site' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /sites/{siteId}/buildings:
+    get:
+      operationId: listBuildings
+      tags: [sites]
+      x-domesday-permission: sites:read
+      x-domesday-objects:
+        - { in: path, name: siteId, type: site }
+      parameters:
+        - $ref: '#/components/parameters/SiteId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of buildings.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BuildingPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createBuilding
+      tags: [sites]
+      x-domesday-permission: sites:manage
+      x-domesday-objects:
+        - { in: path, name: siteId, type: site }
+      parameters:
+        - $ref: '#/components/parameters/SiteId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NamedRequest' }
+      responses:
+        '201':
+          description: The building.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Building' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /buildings/{buildingId}/floors:
+    get:
+      operationId: listFloors
+      tags: [sites]
+      x-domesday-permission: sites:read
+      x-domesday-objects:
+        - { in: path, name: buildingId, type: building }
+      parameters:
+        - $ref: '#/components/parameters/BuildingId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of floors.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FloorPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createFloor
+      tags: [sites]
+      x-domesday-permission: sites:manage
+      x-domesday-objects:
+        - { in: path, name: buildingId, type: building }
+      parameters:
+        - $ref: '#/components/parameters/BuildingId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateFloorRequest' }
+      responses:
+        '201':
+          description: The floor.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Floor' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /sites/{siteId}/rooms:
+    get:
+      operationId: listRooms
+      tags: [sites]
+      summary: Rooms of a site. With provisional=true, the administrator's queue of rooms named during walks (DMS-002).
+      x-domesday-permission: sites:read
+      x-domesday-objects:
+        - { in: path, name: siteId, type: site }
+      parameters:
+        - $ref: '#/components/parameters/SiteId'
+        - name: provisional
+          in: query
+          required: false
+          schema: { type: boolean }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of rooms.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoomPage' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /floors/{floorId}/rooms:
+    post:
+      operationId: createRoom
+      tags: [sites]
+      x-domesday-permission: sites:manage
+      x-domesday-objects:
+        - { in: path, name: floorId, type: floor }
+      parameters:
+        - $ref: '#/components/parameters/FloorId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NamedRequest' }
+      responses:
+        '201':
+          description: The room.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Room' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /rooms/{roomId}/confirm:
+    post:
+      operationId: confirmProvisionalRoom
+      tags: [sites]
+      summary: Confirm a room named on the phone during a walk, optionally renaming or placing it (DMS-002).
+      x-domesday-permission: sites:manage
+      x-domesday-objects:
+        - { in: path, name: roomId, type: room }
+        - { in: body, name: floorId, type: floor }
+      parameters:
+        - $ref: '#/components/parameters/RoomId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConfirmRoomRequest' }
+      responses:
+        '200':
+          description: The confirmed room.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Room' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /sites/{siteId}/room-imports:
+    post:
+      operationId: createRoomImport
+      tags: [sites]
+      summary: Start a spreadsheet upload of buildings, floors and rooms (DMS-001). Returns a signed upload URL.
+      x-domesday-permission: sites:manage
+      x-domesday-objects:
+        - { in: path, name: siteId, type: site }
+      parameters:
+        - $ref: '#/components/parameters/SiteId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateFileImportRequest' }
+      responses:
+        '201':
+          description: The import, waiting for its file.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoomImport' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /room-imports/{importId}:
+    get:
+      operationId: getRoomImport
+      tags: [sites]
+      summary: Import result. Every row with an error is listed with the reason (DMS-001).
+      x-domesday-permission: sites:manage
+      x-domesday-objects:
+        - { in: path, name: importId, type: room_import }
+      parameters:
+        - $ref: '#/components/parameters/ImportId'
+      responses:
+        '200':
+          description: The import.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoomImport' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /room-imports/{importId}/process:
+    post:
+      operationId: processRoomImport
+      tags: [sites]
+      x-domesday-permission: sites:manage
+      x-domesday-objects:
+        - { in: path, name: importId, type: room_import }
+      parameters:
+        - $ref: '#/components/parameters/ImportId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Processing has started.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoomImport' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ---------------------------------------------------------------- register
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [register]
+      x-domesday-permission: register:read
+      parameters:
+        - name: includeHidden
+          in: query
+          required: false
+          schema: { type: boolean, default: false }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of categories.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CategoryPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCategory
+      tags: [register]
+      x-domesday-permission: register:manage
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCategoryRequest' }
+      responses:
+        '201':
+          description: The category.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Category' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /categories/{categoryId}:
+    patch:
+      operationId: updateCategory
+      tags: [register]
+      summary: Rename, hide, switch on or off for recognition (DMS-039), or map to an asset class (DMS-006).
+      x-domesday-permission: register:manage
+      x-domesday-objects:
+        - { in: path, name: categoryId, type: category }
+      parameters:
+        - $ref: '#/components/parameters/CategoryId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCategoryRequest' }
+      responses:
+        '200':
+          description: The category.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Category' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /categories/{categoryId}/merge:
+    post:
+      operationId: mergeCategory
+      tags: [register]
+      summary: Merge one category into another (DMS-005).
+      x-domesday-permission: register:manage
+      x-domesday-objects:
+        - { in: path, name: categoryId, type: category }
+        - { in: body, name: intoCategoryId, type: category }
+      parameters:
+        - $ref: '#/components/parameters/CategoryId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MergeCategoryRequest' }
+      responses:
+        '200':
+          description: The category merged into.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Category' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /account-classes:
+    get:
+      operationId: listAccountClasses
+      tags: [register]
+      summary: Asset classes from the tenant's chart of accounts (DMS-006).
+      x-domesday-permission: register:read
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of asset classes.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountClassPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createAccountClass
+      tags: [register]
+      x-domesday-permission: register:manage
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAccountClassRequest' }
+      responses:
+        '201':
+          description: The asset class.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountClass' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /column-mappings:
+    get:
+      operationId: listColumnMappings
+      tags: [register]
+      summary: Saved column mappings, one per file layout (DMS-003).
+      x-domesday-permission: register:read
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of saved mappings.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ColumnMappingPage' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /register-imports:
+    post:
+      operationId: createRegisterImport
+      tags: [register]
+      summary: Start importing the existing register from CSV or XLSX (DMS-003). Returns a signed upload URL.
+      x-domesday-permission: register:manage
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateFileImportRequest' }
+      responses:
+        '201':
+          description: The import, waiting for its file.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegisterImport' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /register-imports/{importId}:
+    get:
+      operationId: getRegisterImport
+      tags: [register]
+      summary: Detected columns, and the saved mapping for this layout if there is one (DMS-003).
+      x-domesday-permission: register:read
+      x-domesday-objects:
+        - { in: path, name: importId, type: register_import }
+      parameters:
+        - $ref: '#/components/parameters/ImportId'
+      responses:
+        '200':
+          description: The import.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegisterImport' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /register-imports/{importId}/mapping:
+    put:
+      operationId: setRegisterImportMapping
+      tags: [register]
+      summary: Map columns to Domesday fields, using a saved mapping or saving a new one for reuse (DMS-003).
+      x-domesday-permission: register:manage
+      x-domesday-objects:
+        - { in: path, name: importId, type: register_import }
+      parameters:
+        - $ref: '#/components/parameters/ImportId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetRegisterMappingRequest' }
+      responses:
+        '200':
+          description: The import with its mapping.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegisterImport' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /register-imports/{importId}/commit:
+    post:
+      operationId: commitRegisterImport
+      tags: [register]
+      summary: Import the lines. Every source field is kept unchanged beside the Domesday fields (DMS-004).
+      x-domesday-permission: register:manage
+      x-domesday-objects:
+        - { in: path, name: importId, type: register_import }
+      parameters:
+        - $ref: '#/components/parameters/ImportId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Import started.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegisterImport' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /register-lines:
+    get:
+      operationId: listRegisterLines
+      tags: [register]
+      x-domesday-permission: register:read
+      x-domesday-objects:
+        - { in: query, name: siteId, type: site }
+      parameters:
+        - $ref: '#/components/parameters/SiteFilter'
+        - name: importId
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of register lines.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegisterLinePage' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /register-lines/{registerLineId}:
+    get:
+      operationId: getRegisterLine
+      tags: [register]
+      summary: A register line with every source field shown unchanged (DMS-004).
+      x-domesday-permission: register:read
+      x-domesday-objects:
+        - { in: path, name: registerLineId, type: register_line }
+      parameters:
+        - $ref: '#/components/parameters/RegisterLineId'
+      responses:
+        '200':
+          description: The register line.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegisterLine' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ---------------------------------------------------------------- capture
+  /walks:
+    get:
+      operationId: listWalks
+      tags: [capture]
+      x-domesday-permission: walks:read
+      x-domesday-objects:
+        - { in: query, name: siteId, type: site }
+      parameters:
+        - $ref: '#/components/parameters/SiteFilter'
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/WalkStatus' }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of walks.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WalkPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createWalk
+      tags: [capture]
+      summary: Register a walk the phone started, possibly offline, using the phone's walk UUID (DMS-011).
+      x-domesday-permission: walks:capture
+      x-domesday-objects:
+        - { in: body, name: siteId, type: site }
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWalkRequest' }
+      responses:
+        '201':
+          description: The walk.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Walk' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /walks/{walkId}:
+    get:
+      operationId: getWalk
+      tags: [capture]
+      x-domesday-permission: walks:read
+      x-domesday-objects:
+        - { in: path, name: walkId, type: walk }
+      parameters:
+        - $ref: '#/components/parameters/WalkId'
+      responses:
+        '200':
+          description: The walk.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Walk' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /walks/{walkId}/rooms:
+    get:
+      operationId: listWalkRooms
+      tags: [capture]
+      summary: Each room's status on this walk (DMS-010).
+      x-domesday-permission: walks:read
+      x-domesday-objects:
+        - { in: path, name: walkId, type: walk }
+      parameters:
+        - $ref: '#/components/parameters/WalkId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of rooms with their status.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WalkRoomPage' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /walks/{walkId}/rooms/{roomId}/status:
+    put:
+      operationId: setWalkRoomStatus
+      tags: [capture]
+      summary: Mark a room filmed or skipped. A skipped room needs a reason (DMS-010).
+      x-domesday-permission: walks:capture
+      x-domesday-objects:
+        - { in: path, name: walkId, type: walk }
+        - { in: path, name: roomId, type: room }
+      parameters:
+        - $ref: '#/components/parameters/WalkId'
+        - $ref: '#/components/parameters/RoomId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetWalkRoomStatusRequest' }
+      responses:
+        '200':
+          description: The room's status on this walk.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WalkRoom' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /walks/{walkId}/provisional-rooms:
+    post:
+      operationId: createProvisionalRoom
+      tags: [capture]
+      summary: Save a room named on the phone as provisional, for an administrator to confirm (DMS-002).
+      x-domesday-permission: walks:capture
+      x-domesday-objects:
+        - { in: path, name: walkId, type: walk }
+        - { in: body, name: floorId, type: floor }
+      parameters:
+        - $ref: '#/components/parameters/WalkId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateProvisionalRoomRequest' }
+      responses:
+        '201':
+          description: The provisional room.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Room' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /walks/{walkId}/clips/{clipId}/upload-session:
+    post:
+      operationId: createClipUploadSession
+      tags: [capture]
+      summary: Open the resumable upload for a clip, keyed by the clip UUID made on the phone (DMS-012, DMS-017).
+      description: |
+        Returns short-lived signed URLs for each part of about 8 MB, so video goes
+        straight to object storage and never through the API. Calling this again for
+        the same clip returns the same session: the clip UUID is the idempotency key.
+        Capture metadata is fixed here and can never change afterwards (DMS-017).
+      x-domesday-permission: walks:capture
+      x-domesday-objects:
+        - { in: path, name: walkId, type: walk }
+        - { in: body, name: roomId, type: room }
+      parameters:
+        - $ref: '#/components/parameters/WalkId'
+        - $ref: '#/components/parameters/ClipId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateUploadSessionRequest' }
+      responses:
+        '201':
+          description: The upload session.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UploadSession' }
+        '409':
+          $ref: '#/components/responses/Problem'
+        default: { $ref: '#/components/responses/Problem' }
+
+  /clips/{clipId}/upload-session/part-urls:
+    post:
+      operationId: refreshClipPartUrls
+      tags: [capture]
+      summary: Fresh signed URLs for parts not yet confirmed, to resume after the old ones expired (DMS-012).
+      x-domesday-permission: walks:capture
+      x-domesday-objects:
+        - { in: path, name: clipId, type: clip }
+      parameters:
+        - $ref: '#/components/parameters/ClipId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshPartUrlsRequest' }
+      responses:
+        '200':
+          description: Signed URLs for the requested parts.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UploadPartList' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /clips/{clipId}/confirm:
+    post:
+      operationId: confirmClipUpload
+      tags: [capture]
+      summary: Finish a clip's upload and check its fingerprint (DMS-018, DMS-094).
+      description: |
+        The final request of an upload. It carries the SHA-256 the phone computed
+        when recording stopped. The server completes the upload, recomputes the
+        hash, and compares. A match moves the original to write-once storage for
+        the tenant's retention period (DMS-090) and queues processing. A mismatch
+        rejects the clip and logs the event (DMS-018, DMS-092). The phone's clock is
+        kept beside server time and a gap of more than 10 minutes is flagged (DMS-094).
+      x-domesday-permission: walks:capture
+      x-domesday-objects:
+        - { in: path, name: clipId, type: clip }
+      parameters:
+        - $ref: '#/components/parameters/ClipId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConfirmClipUploadRequest' }
+      responses:
+        '200':
+          description: The verified clip.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Clip' }
+        '409':
+          description: The upload is incomplete, or the clip was already verified with another fingerprint or rejected.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422':
+          description: fingerprint_mismatch. The clip was rejected and the event logged.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /clips/{clipId}/label-shots:
+    post:
+      operationId: createLabelShotUpload
+      tags: [capture]
+      summary: Upload a label shot linked to its moment in the clip (DMS-015).
+      x-domesday-permission: walks:capture
+      x-domesday-objects:
+        - { in: path, name: clipId, type: clip }
+      parameters:
+        - $ref: '#/components/parameters/ClipId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateLabelShotRequest' }
+      responses:
+        '201':
+          description: A signed URL for the still.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LabelShotUpload' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /label-shots/{labelShotId}/confirm:
+    post:
+      operationId: confirmLabelShotUpload
+      tags: [capture]
+      summary: Finish a label shot's upload and check its fingerprint, as for clips (DMS-018).
+      x-domesday-permission: walks:capture
+      x-domesday-objects:
+        - { in: path, name: labelShotId, type: label_shot }
+      parameters:
+        - $ref: '#/components/parameters/LabelShotId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConfirmLabelShotRequest' }
+      responses:
+        '200':
+          description: The verified label shot.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LabelShot' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /walks/{walkId}/submit:
+    post:
+      operationId: submitWalk
+      tags: [capture]
+      summary: Capture is finished on the phone. Processing starts once every clip is verified.
+      x-domesday-permission: walks:capture
+      x-domesday-objects:
+        - { in: path, name: walkId, type: walk }
+      parameters:
+        - $ref: '#/components/parameters/WalkId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: The walk.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Walk' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ---------------------------------------------------------------- processing
+  /walks/{walkId}/processing:
+    get:
+      operationId: getWalkProcessingStatus
+      tags: [processing]
+      summary: Progress through the pipeline stages (Part 5; DMS-150).
+      x-domesday-permission: processing:read
+      x-domesday-objects:
+        - { in: path, name: walkId, type: walk }
+      parameters:
+        - $ref: '#/components/parameters/WalkId'
+      responses:
+        '200':
+          description: Processing status.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WalkProcessingStatus' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /walks/{walkId}/reprocess:
+    post:
+      operationId: reprocessWalk
+      tags: [processing]
+      summary: Reprocess with a model version. The same version gives the same proposals and never duplicates lines (DMS-042).
+      x-domesday-permission: processing:manage
+      x-domesday-objects:
+        - { in: path, name: walkId, type: walk }
+      parameters:
+        - $ref: '#/components/parameters/WalkId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReprocessRequest' }
+      responses:
+        '202':
+          description: Jobs queued.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WalkProcessingStatus' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ---------------------------------------------------------------- review
+  /walks/{walkId}/review-queue:
+    get:
+      operationId: listReviewQueue
+      tags: [review]
+      summary: Proposed lines, low confidence first, then medium, then high (DMS-050).
+      x-domesday-permission: review:read
+      x-domesday-objects:
+        - { in: path, name: walkId, type: walk }
+      parameters:
+        - $ref: '#/components/parameters/WalkId'
+        - name: band
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/ConfidenceBand' }
+        - name: undecidedOnly
+          in: query
+          required: false
+          schema: { type: boolean, default: false }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of the review queue with counts per band.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReviewQueuePage' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /asset-lines/{lineId}:
+    get:
+      operationId: getAssetLine
+      tags: [review]
+      summary: A line with its frames, label stills, fields and confidence (DMS-041, DMS-050).
+      x-domesday-permission: review:read
+      x-domesday-objects:
+        - { in: path, name: lineId, type: asset_line }
+      parameters:
+        - $ref: '#/components/parameters/LineId'
+      responses:
+        '200':
+          description: The current version of the line.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AssetLine' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /asset-lines/{lineId}/history:
+    get:
+      operationId: listAssetLineHistory
+      tags: [review]
+      summary: The original proposal and every change, with who and when (DMS-053, DMS-093).
+      x-domesday-permission: review:read
+      x-domesday-objects:
+        - { in: path, name: lineId, type: asset_line }
+      parameters:
+        - $ref: '#/components/parameters/LineId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of versions and decisions.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AssetLineHistoryPage' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /asset-lines/{lineId}/revisions:
+    post:
+      operationId: reviseApprovedLine
+      tags: [review]
+      summary: Change an approved line. Needs a reason and writes a new version; earlier versions stay visible (DMS-093).
+      x-domesday-permission: review:decide
+      x-domesday-objects:
+        - { in: path, name: lineId, type: asset_line }
+      parameters:
+        - $ref: '#/components/parameters/LineId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReviseLineRequest' }
+      responses:
+        '201':
+          description: The new version.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AssetLine' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /walks/{walkId}/decisions:
+    post:
+      operationId: decideLines
+      tags: [review]
+      summary: Accept, edit, reject, merge or split proposed lines (DMS-051, DMS-053, DMS-054).
+      description: |
+        One decision per request. A merge keeps one line with both frame sets
+        attached. A capturer cannot approve lines of rooms they filmed unless the
+        tenant has switched the rule off; the refusal names another eligible
+        reviewer (DMS-054). Serial, model and tag values must come with the image
+        region they were read from (Part 5).
+      x-domesday-permission: review:decide
+      x-domesday-objects:
+        - { in: path, name: walkId, type: walk }
+      parameters:
+        - $ref: '#/components/parameters/WalkId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DecisionRequest' }
+      responses:
+        '200':
+          description: The resulting lines.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DecisionResult' }
+        '403':
+          description: capturer_cannot_approve, with suggestedReviewer.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /walks/{walkId}/bulk-approvals:
+    post:
+      operationId: bulkApproveLines
+      tags: [review]
+      summary: Approve high-confidence lines the reviewer has seen in the grid. Low and medium lines are refused (DMS-037, DMS-052).
+      x-domesday-permission: review:decide
+      x-domesday-objects:
+        - { in: path, name: walkId, type: walk }
+      parameters:
+        - $ref: '#/components/parameters/WalkId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BulkApprovalRequest' }
+      responses:
+        '200':
+          description: Every requested line approved, logged as a bulk approval by this reviewer.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BulkApprovalResult' }
+        '422':
+          description: bulk_approval_not_allowed, with the refused lines and reasons. Nothing is approved.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /walks/{walkId}/approval:
+    post:
+      operationId: approveWalk
+      tags: [review]
+      summary: Approve a walk once every line has a decision and every room is filmed or has a skip reason (DMS-058).
+      description: Approval starts reconciliation and the comparison with the previous approved walk (DMS-060, DMS-070).
+      x-domesday-permission: walks:approve
+      x-domesday-objects:
+        - { in: path, name: walkId, type: walk }
+      parameters:
+        - $ref: '#/components/parameters/WalkId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: The approved walk.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WalkApprovalResult' }
+        '422':
+          description: walk_not_ready_for_approval, showing undecided lines and rooms without a status.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ---------------------------------------------------------------- assets
+  /assets:
+    get:
+      operationId: listAssets
+      tags: [assets]
+      summary: Find assets by tag or serial, only within the caller's sites (DMS-132).
+      x-domesday-permission: assets:read
+      x-domesday-objects:
+        - { in: query, name: siteId, type: site }
+      parameters:
+        - $ref: '#/components/parameters/SiteFilter'
+        - name: tagCode
+          in: query
+          required: false
+          schema: { type: string, minLength: 1, maxLength: 120 }
+        - name: serial
+          in: query
+          required: false
+          schema: { type: string, minLength: 1, maxLength: 120 }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of assets.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AssetPage' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /assets/{assetId}:
+    get:
+      operationId: getAsset
+      tags: [assets]
+      x-domesday-permission: assets:read
+      x-domesday-objects:
+        - { in: path, name: assetId, type: asset }
+      parameters:
+        - $ref: '#/components/parameters/AssetId'
+      responses:
+        '200':
+          description: The asset.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Asset' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /assets/{assetId}/condition-history:
+    get:
+      operationId: listAssetConditionHistory
+      tags: [assets]
+      summary: Condition on each walk, with frames (DMS-076).
+      x-domesday-permission: assets:read
+      x-domesday-objects:
+        - { in: path, name: assetId, type: asset }
+      parameters:
+        - $ref: '#/components/parameters/AssetId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of condition history.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConditionHistoryPage' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ---------------------------------------------------------------- reconciliation
+  /reconciliations:
+    get:
+      operationId: listReconciliations
+      tags: [reconciliation]
+      x-domesday-permission: reconciliation:read
+      x-domesday-objects:
+        - { in: query, name: siteId, type: site }
+      parameters:
+        - $ref: '#/components/parameters/SiteFilter'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of reconciliations.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReconciliationPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: startReconciliation
+      tags: [reconciliation]
+      summary: Reconcile approved lines with the imported register, for one site or the whole group (DMS-060, DMS-065).
+      x-domesday-permission: reconciliation:run
+      x-domesday-objects:
+        - { in: body, name: scope.siteId, type: site }
+        - { in: body, name: registerImportId, type: register_import }
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StartReconciliationRequest' }
+      responses:
+        '202':
+          description: Reconciliation started.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reconciliation' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /reconciliations/{reconciliationId}:
+    get:
+      operationId: getReconciliation
+      tags: [reconciliation]
+      summary: Counts per status and the book value of lines not seen (DMS-062).
+      x-domesday-permission: reconciliation:read
+      x-domesday-objects:
+        - { in: path, name: reconciliationId, type: reconciliation }
+      parameters:
+        - $ref: '#/components/parameters/ReconciliationId'
+      responses:
+        '200':
+          description: The reconciliation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reconciliation' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /reconciliations/{reconciliationId}/matches:
+    get:
+      operationId: listReconciliationMatches
+      tags: [reconciliation]
+      summary: Matches with their score and reasons (DMS-061). "Not seen" is never labelled missing (DMS-063).
+      x-domesday-permission: reconciliation:read
+      x-domesday-objects:
+        - { in: path, name: reconciliationId, type: reconciliation }
+        - { in: query, name: siteId, type: site }
+      parameters:
+        - $ref: '#/components/parameters/ReconciliationId'
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/ReconStatus' }
+        - $ref: '#/components/parameters/SiteFilter'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of matches.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReconciliationMatchPage' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /reconciliations/{reconciliationId}/matches/{matchId}/confirmation:
+    post:
+      operationId: confirmReconciliationMatch
+      tags: [reconciliation]
+      summary: A person confirms or rejects a description-based match (DMS-061).
+      x-domesday-permission: reconciliation:confirm_match
+      x-domesday-objects:
+        - { in: path, name: reconciliationId, type: reconciliation }
+        - { in: path, name: matchId, type: reconciliation_match }
+      parameters:
+        - $ref: '#/components/parameters/ReconciliationId'
+        - $ref: '#/components/parameters/MatchId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConfirmMatchRequest' }
+      responses:
+        '200':
+          description: The match.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReconciliationMatch' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /reconciliations/{reconciliationId}/corrections-exports:
+    post:
+      operationId: createCorrectionsExport
+      tags: [reconciliation]
+      summary: Corrections file for Excel. One row per correction with a link to its evidence (DMS-064).
+      x-domesday-permission: corrections:export
+      x-domesday-objects:
+        - { in: path, name: reconciliationId, type: reconciliation }
+      parameters:
+        - $ref: '#/components/parameters/ReconciliationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCorrectionsExportRequest' }
+      responses:
+        '202':
+          description: The export is being prepared.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrectionsExport' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /corrections-exports/{exportId}:
+    get:
+      operationId: getCorrectionsExport
+      tags: [reconciliation]
+      x-domesday-permission: corrections:export
+      x-domesday-objects:
+        - { in: path, name: exportId, type: corrections_export }
+      parameters:
+        - $ref: '#/components/parameters/ExportId'
+      responses:
+        '200':
+          description: The export, with a signed download link when ready.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrectionsExport' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ---------------------------------------------------------------- comparison
+  /walks/{walkId}/comparison:
+    get:
+      operationId: getWalkComparison
+      tags: [comparison]
+      summary: The comparison with the previous approved walk, opening with "9 changes since the walk on 3 October" (DMS-070, DMS-074).
+      x-domesday-permission: comparisons:read
+      x-domesday-objects:
+        - { in: path, name: walkId, type: walk }
+      parameters:
+        - $ref: '#/components/parameters/WalkId'
+      responses:
+        '200':
+          description: The comparison summary.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Comparison' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /comparisons/{comparisonId}/changes:
+    get:
+      operationId: listComparisonChanges
+      tags: [comparison]
+      summary: Changes first, with before and after frames; unchanged assets only as a count (DMS-071 to DMS-074).
+      x-domesday-permission: comparisons:read
+      x-domesday-objects:
+        - { in: path, name: comparisonId, type: comparison }
+      parameters:
+        - $ref: '#/components/parameters/ComparisonId'
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/ChangeStatus' }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of change items.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChangeItemPage' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /investigations:
+    get:
+      operationId: listInvestigations
+      tags: [comparison]
+      x-domesday-permission: comparisons:read
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/InvestigationStatus' }
+        - name: ownerUserId
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - name: overdue
+          in: query
+          required: false
+          schema: { type: boolean }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of investigations.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvestigationPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: assignInvestigation
+      tags: [comparison]
+      summary: Assign a not-seen asset to someone to investigate, with a due date (DMS-075, DMS-113).
+      x-domesday-permission: investigations:manage
+      x-domesday-objects:
+        - { in: body, name: changeItemId, type: change_item }
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AssignInvestigationRequest' }
+      responses:
+        '201':
+          description: The investigation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Investigation' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /investigations/{investigationId}:
+    get:
+      operationId: getInvestigation
+      tags: [comparison]
+      x-domesday-permission: comparisons:read
+      x-domesday-objects:
+        - { in: path, name: investigationId, type: investigation }
+      parameters:
+        - $ref: '#/components/parameters/InvestigationId'
+      responses:
+        '200':
+          description: The investigation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Investigation' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /investigations/{investigationId}/outcome:
+    post:
+      operationId: recordInvestigationOutcome
+      tags: [comparison]
+      summary: Record the outcome. "Transferred" updates the asset's location; the history shows who decided (DMS-075).
+      x-domesday-permission: investigations:record_outcome
+      x-domesday-objects:
+        - { in: path, name: investigationId, type: investigation }
+        - { in: body, name: transferredTo.siteId, type: site }
+      parameters:
+        - $ref: '#/components/parameters/InvestigationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordOutcomeRequest' }
+      responses:
+        '200':
+          description: The closed investigation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Investigation' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ---------------------------------------------------------------- reports
+  /reports:
+    get:
+      operationId: listReports
+      tags: [reports]
+      x-domesday-permission: reports:read
+      x-domesday-objects:
+        - { in: query, name: siteId, type: site }
+      parameters:
+        - $ref: '#/components/parameters/SiteFilter'
+        - name: type
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/ReportType' }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of reports.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: generateReport
+      tags: [reports]
+      summary: Generate a report. Every report states its method and limits before its findings (DMS-080 to DMS-085).
+      x-domesday-permission: reports:generate
+      x-domesday-objects:
+        - { in: body, name: scope.siteId, type: site }
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GenerateReportRequest' }
+      responses:
+        '202':
+          description: The report is being generated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Report' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /reports/{reportId}:
+    get:
+      operationId: getReport
+      tags: [reports]
+      x-domesday-permission: reports:read
+      x-domesday-objects:
+        - { in: path, name: reportId, type: report }
+      parameters:
+        - $ref: '#/components/parameters/ReportId'
+      responses:
+        '200':
+          description: The report, with a signed download link once issued.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Report' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /public/report-verifications/{verificationCode}:
+    get:
+      operationId: verifyReport
+      tags: [reports]
+      summary: Anyone with the code checks a report is genuine and unchanged, without seeing its contents (DMS-086).
+      description: |
+        The checker's browser computes the SHA-256 of the PDF locally and sends
+        only the hash. The answer is "matches", "does not match the issued report",
+        or "unknown code". Rate limited per client.
+      security: []
+      parameters:
+        - name: verificationCode
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/VerificationCode' }
+        - name: sha256
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/Sha256' }
+      responses:
+        '200':
+          description: The result of the check.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportVerification' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ---------------------------------------------------------------- evidence
+  /audit-events:
+    get:
+      operationId: listAuditEvents
+      tags: [evidence]
+      summary: The append-only audit log, newest first (DMS-092).
+      x-domesday-permission: audit:read
+      parameters:
+        - name: objectType
+          in: query
+          required: false
+          schema: { type: string, minLength: 1, maxLength: 60 }
+        - name: objectId
+          in: query
+          required: false
+          schema: { type: string, minLength: 1, maxLength: 120 }
+        - name: action
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/AuditAction' }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of audit events.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuditEventPage' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /clips/{clipId}/evidence:
+    get:
+      operationId: getClipEvidence
+      tags: [evidence]
+      summary: The clip's fingerprint, times, location and capturer, and a 5-minute link to its blurred playback (DMS-091, US-11).
+      x-domesday-permission: evidence:read
+      x-domesday-objects:
+        - { in: path, name: clipId, type: clip }
+      parameters:
+        - $ref: '#/components/parameters/ClipId'
+      responses:
+        '200':
+          description: Evidence for the clip.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClipEvidence' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /clips/{clipId}/unblurred-views:
+    post:
+      operationId: openUnblurredOriginal
+      tags: [evidence]
+      summary: Open the unblurred original. Two named roles only, each view logged with a reason (DMS-102).
+      x-domesday-permission: evidence:read_unblurred
+      x-domesday-objects:
+        - { in: path, name: clipId, type: clip }
+      parameters:
+        - $ref: '#/components/parameters/ClipId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReasonRequest' }
+      responses:
+        '201':
+          description: A 5-minute link to the original, and the audit event recorded.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UnblurredView' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /sites/{siteId}/legal-holds:
+    post:
+      operationId: placeLegalHold
+      tags: [evidence]
+      summary: Place a legal hold on a site's evidence, overriding normal deletion (DMS-096).
+      x-domesday-permission: evidence:legal_hold
+      x-domesday-objects:
+        - { in: path, name: siteId, type: site }
+      parameters:
+        - $ref: '#/components/parameters/SiteId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReasonRequest' }
+      responses:
+        '201':
+          description: The legal hold.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LegalHold' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /legal-holds/{holdId}/lift-approvals:
+    post:
+      operationId: approveLegalHoldLift
+      tags: [evidence]
+      summary: One administrator's approval to lift a hold. The hold lifts when two different administrators approve (DMS-096).
+      x-domesday-permission: evidence:legal_hold
+      x-domesday-objects:
+        - { in: path, name: holdId, type: legal_hold }
+      parameters:
+        - $ref: '#/components/parameters/HoldId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: The legal hold.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LegalHold' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ---------------------------------------------------------------- notifications
+  /sites/{siteId}/walk-schedule:
+    get:
+      operationId: getWalkSchedule
+      tags: [notifications]
+      x-domesday-permission: sites:read
+      x-domesday-objects:
+        - { in: path, name: siteId, type: site }
+      parameters:
+        - $ref: '#/components/parameters/SiteId'
+      responses:
+        '200':
+          description: The site's walk schedule.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WalkSchedule' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: setWalkSchedule
+      tags: [notifications]
+      summary: Walk reminders and escalation when a walk is overdue (DMS-112).
+      x-domesday-permission: notifications:manage
+      x-domesday-objects:
+        - { in: path, name: siteId, type: site }
+      parameters:
+        - $ref: '#/components/parameters/SiteId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WalkScheduleInput' }
+      responses:
+        '200':
+          description: The site's walk schedule.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WalkSchedule' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ---------------------------------------------------------------- billing
+  /billing/usage:
+    get:
+      operationId: getPlanUsage
+      tags: [billing]
+      summary: Sites, walks and video minutes used against the plan (DMS-133).
+      x-domesday-permission: billing:read
+      responses:
+        '200':
+          description: Usage against plan.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlanUsage' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /walks/{walkId}/usage:
+    get:
+      operationId: getWalkUsage
+      tags: [billing]
+      summary: Video minutes and plan units a walk used (DMS-134).
+      x-domesday-permission: billing:read
+      x-domesday-objects:
+        - { in: path, name: walkId, type: walk }
+      parameters:
+        - $ref: '#/components/parameters/WalkId'
+      responses:
+        '200':
+          description: The walk's usage.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WalkUsage' }
+        default: { $ref: '#/components/responses/Problem' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: A token from the bought sign-in provider (DMS-130, ADR-DMS-05).
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: A unique key for this write. Retrying with the same key and body returns the first result.
+      schema: { type: string, minLength: 8, maxLength: 255, pattern: '^[A-Za-z0-9._:-]+$' }
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: The nextCursor from the previous page.
+      schema: { type: string, minLength: 1, maxLength: 512 }
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+    SiteFilter:
+      name: siteId
+      in: query
+      required: false
+      schema: { $ref: '#/components/schemas/Uuid' }
+    SiteId: { name: siteId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    BuildingId: { name: buildingId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    FloorId: { name: floorId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    RoomId: { name: roomId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    ImportId: { name: importId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    CategoryId: { name: categoryId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    RegisterLineId: { name: registerLineId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    WalkId: { name: walkId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    ClipId: { name: clipId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    LabelShotId: { name: labelShotId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    LineId: { name: lineId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    AssetId: { name: assetId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    ReconciliationId: { name: reconciliationId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    MatchId: { name: matchId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    ExportId: { name: exportId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    ComparisonId: { name: comparisonId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    InvestigationId: { name: investigationId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    ReportId: { name: reportId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    GrantId: { name: grantId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    HoldId: { name: holdId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+
+  responses:
+    Problem:
+      description: An error, in the one error format.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+
+  schemas:
+    # ---- primitives
+    Uuid: { type: string, format: uuid }
+    NullableUuid:
+      anyOf:
+        - { $ref: '#/components/schemas/Uuid' }
+        - { type: 'null' }
+    Sha256:
+      type: string
+      pattern: '^[0-9a-f]{64}$'
+      description: Lower-case hex SHA-256.
+    NullableSha256:
+      anyOf:
+        - { $ref: '#/components/schemas/Sha256' }
+        - { type: 'null' }
+    Timestamp: { type: string, format: date-time }
+    NullableTimestamp:
+      anyOf:
+        - { $ref: '#/components/schemas/Timestamp' }
+        - { type: 'null' }
+    NullableString: { type: [string, 'null'] }
+    Kobo:
+      type: integer
+      description: Money in whole kobo (100 kobo = 1 naira).
+    NullableKobo: { type: [integer, 'null'] }
+    VerificationCode:
+      type: string
+      pattern: '^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$'
+      description: 12 characters of Crockford base32 in three groups, printed on every report (DMS-086).
+    RowError:
+      type: object
+      required: [row, reason]
+      properties:
+        row: { type: integer, minimum: 1 }
+        reason: { type: string }
+    SignedTransfer:
+      type: object
+      required: [url, expiresAt]
+      properties:
+        url: { type: string, format: uri }
+        expiresAt: { $ref: '#/components/schemas/Timestamp' }
+    NullableSignedTransfer:
+      anyOf:
+        - { $ref: '#/components/schemas/SignedTransfer' }
+        - { type: 'null' }
+
+    # ---- errors
+    Problem:
+      type: object
+      description: RFC 9457 problem details with a machine-readable code. Extra members carry details for some codes.
+      required: [type, title, status, code, detail]
+      properties:
+        type: { type: string, description: 'urn:domesday:problem:<code>' }
+        title: { type: string }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        code: { $ref: '#/components/schemas/ErrorCode' }
+        detail: { type: string }
+        requestId: { type: string }
+        operationId: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            required: [in, path, message]
+            properties:
+              in: { type: string }
+              path: { type: string }
+              message: { type: string }
+      additionalProperties: true
+    ErrorCode:
+      type: string
+      enum:
+        - validation_failed
+        - malformed_request
+        - unsupported_media_type
+        - payload_too_large
+        - unauthenticated
+        - mfa_required
+        - forbidden
+        - not_found
+        - conflict
+        - idempotency_key_required
+        - idempotency_key_reused
+        - idempotency_request_in_progress
+        - invalid_cursor
+        - rate_limited
+        - not_implemented
+        - internal_error
+        - fingerprint_mismatch
+        - clip_already_verified
+        - clip_already_rejected
+        - upload_incomplete
+        - walk_not_ready_for_approval
+        - capturer_cannot_approve
+        - bulk_approval_not_allowed
+        - reason_required
+        - retention_out_of_bounds
+        - plan_limit_reached
+        - partner_grant_inactive
+
+    # ---- shared vocabulary (packages/domain; a test keeps these in step)
+    ChangeStatus: { type: string, enum: [unchanged, not_seen, moved, new, condition_worse, condition_better, room_not_filmed] }
+    ReconStatus: { type: string, enum: [found, found_elsewhere, unrecorded, not_seen] }
+    ConditionGrade: { type: string, enum: [good, fair, poor, not_working_or_unsafe] }
+    ConfidenceBand: { type: string, enum: [high, medium, low] }
+    RoomWalkStatus: { type: string, enum: [not_started, filmed, skipped] }
+    Role: { type: string, enum: [tenant_administrator, financial_controller, facilities_manager, site_manager, reviewer, internal_auditor, read_only, partner] }
+    InvestigationOutcome: { type: string, enum: [found, transferred, disposed, written_off, lost, stolen] }
+    InvestigationStatus: { type: string, enum: [open, closed] }
+    ReviewDecisionKind: { type: string, enum: [accept, edit, reject, merge, split, bulk_approve] }
+    LineKind: { type: string, enum: [single_item, counted_group] }
+    LineStatus: { type: string, enum: [proposed, accepted, rejected, merged, split] }
+    PipelineStage: { type: string, enum: [ingest_and_verify, privacy_pass, pick_frames, detect_and_track, read_text_and_tags, describe_and_grade, assemble_and_score, human_review, reconcile_and_compare] }
+    JobStatus: { type: string, enum: [queued, leased, succeeded, failed, dead_lettered] }
+    WalkStatus: { type: string, enum: [capturing, uploading, processing, in_review, approved] }
+    ClipUploadStatus: { type: string, enum: [pending, uploading, verified, rejected] }
+    ReportType: { type: string, enum: [audit_verification, insurance_schedule, loss_pack, maintenance_safety, handover_pack] }
+    CorrectionKind: { type: string, enum: [new_line, location_change, proposed_write_off] }
+    ReconMatchMethod: { type: string, enum: [tag, serial, description] }
+    ComparisonMatchMethod: { type: string, enum: [asset_identity, tag, serial, category_appearance_position] }
+    AuditAction:
+      type: string
+      enum:
+        - session.sign_in
+        - review.decision
+        - review.bulk_approval
+        - walk.approved
+        - line.edited_after_approval
+        - export.corrections
+        - export.tenant_data
+        - report.generated
+        - evidence.accessed
+        - evidence.unblurred_viewed
+        - evidence.access_refused
+        - permission.changed
+        - partner_grant.changed
+        - clip.verified
+        - clip.fingerprint_mismatch
+        - storage.change_refused
+        - retention.original_deleted
+        - legal_hold.placed
+        - legal_hold.lift_approved
+        - legal_hold.lifted
+        - investigation.assigned
+        - investigation.outcome_recorded
+        - settings.changed
+    Permission:
+      type: string
+      enum:
+        - session:read
+        - sites:read
+        - sites:manage
+        - register:read
+        - register:manage
+        - walks:read
+        - walks:capture
+        - walks:approve
+        - processing:read
+        - processing:manage
+        - review:read
+        - review:decide
+        - assets:read
+        - reconciliation:read
+        - reconciliation:run
+        - reconciliation:confirm_match
+        - corrections:export
+        - comparisons:read
+        - investigations:manage
+        - investigations:record_outcome
+        - reports:read
+        - reports:generate
+        - audit:read
+        - evidence:read
+        - evidence:read_unblurred
+        - evidence:legal_hold
+        - tenant:settings
+        - partners:manage
+        - partner:workspace
+        - notifications:manage
+        - billing:read
+
+    # ---- platform and tenancy
+    Health:
+      type: object
+      required: [status, service, version, time]
+      properties:
+        status: { type: string, enum: [ok] }
+        service: { type: string }
+        version: { type: string }
+        time: { $ref: '#/components/schemas/Timestamp' }
+    Principal:
+      type: object
+      required: [userId, tenantId, displayName, kind, mfaVerified, grants, permissions]
+      properties:
+        userId: { $ref: '#/components/schemas/Uuid' }
+        tenantId: { $ref: '#/components/schemas/Uuid' }
+        displayName: { type: string }
+        kind: { type: string, enum: [user, partner] }
+        mfaVerified: { type: boolean }
+        grants:
+          type: array
+          items:
+            type: object
+            required: [role, sites]
+            properties:
+              role: { $ref: '#/components/schemas/Role' }
+              sites:
+                oneOf:
+                  - { type: string, enum: [all] }
+                  - { type: array, items: { $ref: '#/components/schemas/Uuid' } }
+        permissions:
+          type: array
+          items: { $ref: '#/components/schemas/Permission' }
+    TenantSettings:
+      type: object
+      required: [originalsRetentionMonths, capturerSeparationRule, capitalisationThresholdKobo, trainingConsent]
+      properties:
+        originalsRetentionMonths: { type: integer, minimum: 13, maximum: 84 }
+        capturerSeparationRule: { type: boolean }
+        capitalisationThresholdKobo: { $ref: '#/components/schemas/NullableKobo' }
+        trainingConsent: { type: boolean }
+    UpdateTenantSettingsRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        originalsRetentionMonths: { type: integer, minimum: 13, maximum: 84, description: DMS-136. }
+        capturerSeparationRule: { type: boolean, description: DMS-054. Switch off only for small sites. }
+        capitalisationThresholdKobo: { type: [integer, 'null'], minimum: 0, description: DMS-007. }
+    PartnerGrant:
+      type: object
+      required: [id, partnerTenantId, allSites, siteIds, startsAt, endsAt, grantedBy, grantedAt, revokedAt]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        partnerTenantId: { $ref: '#/components/schemas/Uuid' }
+        allSites: { type: boolean }
+        siteIds: { type: array, items: { $ref: '#/components/schemas/Uuid' } }
+        startsAt: { $ref: '#/components/schemas/Timestamp' }
+        endsAt: { $ref: '#/components/schemas/NullableTimestamp' }
+        grantedBy: { $ref: '#/components/schemas/Uuid' }
+        grantedAt: { $ref: '#/components/schemas/Timestamp' }
+        revokedAt: { $ref: '#/components/schemas/NullableTimestamp' }
+    PartnerGrantPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/PartnerGrant' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+    CreatePartnerGrantRequest:
+      type: object
+      additionalProperties: false
+      required: [partnerTenantId, allSites, siteIds]
+      properties:
+        partnerTenantId: { $ref: '#/components/schemas/Uuid' }
+        allSites: { type: boolean }
+        siteIds: { type: array, maxItems: 500, uniqueItems: true, items: { $ref: '#/components/schemas/Uuid' } }
+        startsAt: { $ref: '#/components/schemas/Timestamp' }
+        endsAt: { $ref: '#/components/schemas/Timestamp' }
+    PartnerClientTenant:
+      type: object
+      required: [tenantId, name, allSites, siteIds, endsAt]
+      properties:
+        tenantId: { $ref: '#/components/schemas/Uuid' }
+        name: { type: string }
+        allSites: { type: boolean }
+        siteIds: { type: array, items: { $ref: '#/components/schemas/Uuid' } }
+        endsAt: { $ref: '#/components/schemas/NullableTimestamp' }
+    PartnerClientTenantPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/PartnerClientTenant' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+
+    # ---- sites
+    NamedRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200, pattern: '\S' }
+    Site:
+      type: object
+      required: [id, name, code, address, archivedAt, createdAt]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        name: { type: string }
+        code: { $ref: '#/components/schemas/NullableString' }
+        address: { $ref: '#/components/schemas/NullableString' }
+        archivedAt: { $ref: '#/components/schemas/NullableTimestamp' }
+        createdAt: { $ref: '#/components/schemas/Timestamp' }
+    SitePage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Site' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+    CreateSiteRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200, pattern: '\S' }
+        code: { type: string, minLength: 1, maxLength: 40 }
+        address: { type: string, maxLength: 500 }
+    Building:
+      type: object
+      required: [id, siteId, name]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        siteId: { $ref: '#/components/schemas/Uuid' }
+        name: { type: string }
+    BuildingPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Building' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+    Floor:
+      type: object
+      required: [id, buildingId, name, level]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        buildingId: { $ref: '#/components/schemas/Uuid' }
+        name: { type: string }
+        level: { type: [integer, 'null'] }
+    FloorPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Floor' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+    CreateFloorRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200, pattern: '\S' }
+        level: { type: integer, minimum: -10, maximum: 200 }
+    Room:
+      type: object
+      required: [id, siteId, buildingId, floorId, name, provisional, createdDuringWalkId, confirmedAt]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        siteId: { $ref: '#/components/schemas/Uuid' }
+        buildingId: { $ref: '#/components/schemas/NullableUuid' }
+        floorId: { $ref: '#/components/schemas/NullableUuid' }
+        name: { type: string }
+        provisional: { type: boolean }
+        createdDuringWalkId: { $ref: '#/components/schemas/NullableUuid' }
+        confirmedAt: { $ref: '#/components/schemas/NullableTimestamp' }
+    RoomPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Room' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+    ConfirmRoomRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200, pattern: '\S' }
+        floorId: { $ref: '#/components/schemas/Uuid' }
+    CreateFileImportRequest:
+      type: object
+      additionalProperties: false
+      required: [fileName, fileKind, sizeBytes]
+      properties:
+        fileName: { type: string, minLength: 1, maxLength: 255 }
+        fileKind: { type: string, enum: [csv, xlsx] }
+        sizeBytes: { type: integer, minimum: 1, maximum: 104857600 }
+    RoomImport:
+      type: object
+      required: [id, siteId, fileName, status, rowsTotal, roomsCreated, rowErrors, upload]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        siteId: { $ref: '#/components/schemas/Uuid' }
+        fileName: { type: string }
+        status: { type: string, enum: [awaiting_upload, uploaded, processed, failed] }
+        rowsTotal: { type: [integer, 'null'] }
+        roomsCreated: { type: [integer, 'null'] }
+        rowErrors: { type: array, items: { $ref: '#/components/schemas/RowError' } }
+        upload: { $ref: '#/components/schemas/NullableSignedTransfer' }
+
+    # ---- register
+    Category:
+      type: object
+      required: [id, name, namingRule, source, hidden, countsAsAsset, accountClassId, mergedIntoId]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        name: { type: string }
+        namingRule: { $ref: '#/components/schemas/NullableString' }
+        source: { type: string, enum: [default_catalogue, tenant] }
+        hidden: { type: boolean }
+        countsAsAsset: { type: boolean, description: DMS-039. Off means the recogniser ignores this category. }
+        accountClassId: { $ref: '#/components/schemas/NullableUuid' }
+        mergedIntoId: { $ref: '#/components/schemas/NullableUuid' }
+    CategoryPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Category' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+    CreateCategoryRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200, pattern: '\S' }
+        namingRule: { type: string, maxLength: 500 }
+        accountClassId: { $ref: '#/components/schemas/Uuid' }
+    UpdateCategoryRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200, pattern: '\S' }
+        namingRule: { type: [string, 'null'], maxLength: 500 }
+        hidden: { type: boolean }
+        countsAsAsset: { type: boolean }
+        accountClassId: { $ref: '#/components/schemas/NullableUuid' }
+    MergeCategoryRequest:
+      type: object
+      additionalProperties: false
+      required: [intoCategoryId]
+      properties:
+        intoCategoryId: { $ref: '#/components/schemas/Uuid' }
+    AccountClass:
+      type: object
+      required: [id, code, name]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        code: { $ref: '#/components/schemas/NullableString' }
+        name: { type: string }
+    AccountClassPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/AccountClass' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+    CreateAccountClassRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 40 }
+        name: { type: string, minLength: 1, maxLength: 200, pattern: '\S' }
+    RegisterField:
+      type: string
+      description: The Domesday field a source column maps to (DMS-004).
+      enum: [original_register_id, description, category, location, cost, acquisition_date, book_value, tag_code, serial, ignore]
+    ColumnMapping:
+      type: object
+      required: [id, name, layoutSignature, fileKind, mapping]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        name: { type: string }
+        layoutSignature: { type: string }
+        fileKind: { type: string, enum: [csv, xlsx] }
+        mapping:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/RegisterField' }
+    ColumnMappingPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ColumnMapping' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+    RegisterImport:
+      type: object
+      required: [id, fileName, fileKind, status, detectedColumns, layoutSignature, suggestedColumnMappingId, columnMappingId, rowsTotal, rowsImported, rowErrors, upload, createdAt]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        fileName: { type: string }
+        fileKind: { type: string, enum: [csv, xlsx] }
+        status: { type: string, enum: [awaiting_upload, uploaded, mapped, committed, failed] }
+        detectedColumns:
+          type: [array, 'null']
+          items: { type: string }
+        layoutSignature: { $ref: '#/components/schemas/NullableString' }
+        suggestedColumnMappingId:
+          $ref: '#/components/schemas/NullableUuid'
+          description: The mapping saved for this file layout, reused automatically (DMS-003).
+        columnMappingId: { $ref: '#/components/schemas/NullableUuid' }
+        rowsTotal: { type: [integer, 'null'] }
+        rowsImported: { type: [integer, 'null'] }
+        rowErrors: { type: array, items: { $ref: '#/components/schemas/RowError' } }
+        upload: { $ref: '#/components/schemas/NullableSignedTransfer' }
+        createdAt: { $ref: '#/components/schemas/Timestamp' }
+    SetRegisterMappingRequest:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [columnMappingId]
+          properties:
+            columnMappingId: { $ref: '#/components/schemas/Uuid' }
+        - type: object
+          additionalProperties: false
+          required: [mapping, saveAs]
+          properties:
+            mapping:
+              type: object
+              minProperties: 1
+              additionalProperties: { $ref: '#/components/schemas/RegisterField' }
+            saveAs: { type: string, minLength: 1, maxLength: 200 }
+    RegisterLine:
+      type: object
+      required: [id, registerImportId, rowNumber, sourceFields, originalRegisterId, description, categoryText, locationText, costKobo, acquisitionDate, bookValueKobo, tagCode, serial, categoryId, siteId, roomId]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        registerImportId: { $ref: '#/components/schemas/Uuid' }
+        rowNumber: { type: integer, minimum: 1 }
+        sourceFields:
+          type: object
+          description: Every source field exactly as it was in the file (DMS-004).
+          additionalProperties: { type: string }
+        originalRegisterId: { $ref: '#/components/schemas/NullableString' }
+        description: { $ref: '#/components/schemas/NullableString' }
+        categoryText: { $ref: '#/components/schemas/NullableString' }
+        locationText: { $ref: '#/components/schemas/NullableString' }
+        costKobo: { $ref: '#/components/schemas/NullableKobo' }
+        acquisitionDate: { type: [string, 'null'], format: date }
+        bookValueKobo: { $ref: '#/components/schemas/NullableKobo' }
+        tagCode: { $ref: '#/components/schemas/NullableString' }
+        serial: { $ref: '#/components/schemas/NullableString' }
+        categoryId: { $ref: '#/components/schemas/NullableUuid' }
+        siteId: { $ref: '#/components/schemas/NullableUuid' }
+        roomId: { $ref: '#/components/schemas/NullableUuid' }
+    RegisterLinePage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/RegisterLine' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+
+    # ---- capture
+    Walk:
+      type: object
+      required: [id, siteId, status, startedBy, startedAtDevice, receivedAt, submittedAt, approvedBy, approvedAt, previousWalkId, stagedRisk, roomCounts]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        siteId: { $ref: '#/components/schemas/Uuid' }
+        status: { $ref: '#/components/schemas/WalkStatus' }
+        startedBy: { $ref: '#/components/schemas/Uuid' }
+        startedAtDevice: { $ref: '#/components/schemas/Timestamp' }
+        receivedAt: { $ref: '#/components/schemas/Timestamp' }
+        submittedAt: { $ref: '#/components/schemas/NullableTimestamp' }
+        approvedBy: { $ref: '#/components/schemas/NullableUuid' }
+        approvedAt: { $ref: '#/components/schemas/NullableTimestamp' }
+        previousWalkId: { $ref: '#/components/schemas/NullableUuid' }
+        stagedRisk: { type: boolean, description: DMS-095. }
+        roomCounts:
+          type: object
+          required: [notStarted, filmed, skipped]
+          properties:
+            notStarted: { type: integer, minimum: 0 }
+            filmed: { type: integer, minimum: 0 }
+            skipped: { type: integer, minimum: 0 }
+    WalkPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Walk' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+    CreateWalkRequest:
+      type: object
+      additionalProperties: false
+      required: [id, siteId, startedAtDevice]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        siteId: { $ref: '#/components/schemas/Uuid' }
+        startedAtDevice: { $ref: '#/components/schemas/Timestamp' }
+    WalkRoom:
+      type: object
+      required: [roomId, name, provisional, status, skipReason, capturedBy]
+      properties:
+        roomId: { $ref: '#/components/schemas/Uuid' }
+        name: { type: string }
+        provisional: { type: boolean }
+        status: { $ref: '#/components/schemas/RoomWalkStatus' }
+        skipReason: { $ref: '#/components/schemas/NullableString' }
+        capturedBy: { type: array, items: { $ref: '#/components/schemas/Uuid' } }
+    WalkRoomPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/WalkRoom' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+    SetWalkRoomStatusRequest:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: { $ref: '#/components/schemas/RoomWalkStatus' }
+        skipReason: { type: string, minLength: 1, maxLength: 500, pattern: '\S' }
+      if:
+        properties: { status: { const: skipped } }
+      then:
+        required: [skipReason]
+      else:
+        not: { required: [skipReason] }
+    CreateProvisionalRoomRequest:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        name: { type: string, minLength: 1, maxLength: 200, pattern: '\S' }
+        floorId: { $ref: '#/components/schemas/Uuid' }
+    CaptureLocation:
+      type: object
+      additionalProperties: false
+      required: [latitude, longitude, accuracyMetres]
+      properties:
+        latitude: { type: number, minimum: -90, maximum: 90 }
+        longitude: { type: number, minimum: -180, maximum: 180 }
+        accuracyMetres: { type: number, minimum: 0 }
+    CreateUploadSessionRequest:
+      type: object
+      additionalProperties: false
+      required: [roomId, sizeBytes, contentType, deviceId, startedAtDevice, endedAtDevice]
+      properties:
+        roomId: { $ref: '#/components/schemas/Uuid' }
+        sizeBytes: { type: integer, minimum: 1, maximum: 21474836480 }
+        contentType: { type: string, enum: [video/mp4, video/quicktime] }
+        deviceId: { type: string, minLength: 1, maxLength: 200 }
+        startedAtDevice: { $ref: '#/components/schemas/Timestamp' }
+        endedAtDevice: { $ref: '#/components/schemas/Timestamp' }
+        location:
+          description: Only where the user has allowed location (DMS-017).
+          anyOf:
+            - { $ref: '#/components/schemas/CaptureLocation' }
+            - { type: 'null' }
+    UploadPart:
+      type: object
+      required: [partNumber, url, expiresAt]
+      properties:
+        partNumber: { type: integer, minimum: 1, maximum: 10000 }
+        url: { type: string, format: uri }
+        expiresAt: { $ref: '#/components/schemas/Timestamp' }
+    UploadPartList:
+      type: object
+      required: [parts]
+      properties:
+        parts: { type: array, items: { $ref: '#/components/schemas/UploadPart' } }
+    UploadSession:
+      type: object
+      required: [clipId, uploadId, partSizeBytes, partCount, parts]
+      properties:
+        clipId: { $ref: '#/components/schemas/Uuid' }
+        uploadId: { type: string }
+        partSizeBytes: { type: integer }
+        partCount: { type: integer, minimum: 1 }
+        parts: { type: array, items: { $ref: '#/components/schemas/UploadPart' } }
+    RefreshPartUrlsRequest:
+      type: object
+      additionalProperties: false
+      required: [partNumbers]
+      properties:
+        partNumbers:
+          type: array
+          minItems: 1
+          maxItems: 10000
+          uniqueItems: true
+          items: { type: integer, minimum: 1, maximum: 10000 }
+    ConfirmClipUploadRequest:
+      type: object
+      additionalProperties: false
+      required: [sha256, deviceTime, parts]
+      properties:
+        sha256:
+          $ref: '#/components/schemas/Sha256'
+          description: Computed on the phone at the moment recording stopped (DMS-018).
+        deviceTime:
+          $ref: '#/components/schemas/Timestamp'
+          description: The phone's clock as it sent this request (DMS-094).
+        parts:
+          type: array
+          minItems: 1
+          maxItems: 10000
+          items:
+            type: object
+            additionalProperties: false
+            required: [partNumber, etag]
+            properties:
+              partNumber: { type: integer, minimum: 1, maximum: 10000 }
+              etag: { type: string, minLength: 1, maxLength: 256 }
+    Clip:
+      type: object
+      required: [id, walkId, roomId, status, capturedBy, deviceId, startedAtDevice, endedAtDevice, location, sizeBytes, sha256, serverSha256, deviceTime, serverTime, clockGapFlag, retentionUntil, legalHold]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        walkId: { $ref: '#/components/schemas/Uuid' }
+        roomId: { $ref: '#/components/schemas/Uuid' }
+        status: { $ref: '#/components/schemas/ClipUploadStatus' }
+        capturedBy: { $ref: '#/components/schemas/Uuid' }
+        deviceId: { type: string }
+        startedAtDevice: { $ref: '#/components/schemas/Timestamp' }
+        endedAtDevice: { $ref: '#/components/schemas/Timestamp' }
+        location:
+          anyOf:
+            - { $ref: '#/components/schemas/CaptureLocation' }
+            - { type: 'null' }
+        sizeBytes: { type: integer }
+        sha256: { $ref: '#/components/schemas/NullableSha256' }
+        serverSha256: { $ref: '#/components/schemas/NullableSha256' }
+        deviceTime: { $ref: '#/components/schemas/NullableTimestamp' }
+        serverTime: { $ref: '#/components/schemas/NullableTimestamp' }
+        clockGapFlag: { type: [boolean, 'null'], description: DMS-094. True when device and server time differ by more than 10 minutes. }
+        retentionUntil: { $ref: '#/components/schemas/NullableTimestamp' }
+        legalHold: { type: boolean }
+    CreateLabelShotRequest:
+      type: object
+      additionalProperties: false
+      required: [id, offsetMs, sizeBytes, takenAtDevice]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        offsetMs: { type: integer, minimum: 0, description: The moment in the clip (DMS-015). }
+        sizeBytes: { type: integer, minimum: 1, maximum: 52428800 }
+        takenAtDevice: { $ref: '#/components/schemas/Timestamp' }
+    LabelShotUpload:
+      type: object
+      required: [labelShotId, upload]
+      properties:
+        labelShotId: { $ref: '#/components/schemas/Uuid' }
+        upload: { $ref: '#/components/schemas/SignedTransfer' }
+    ConfirmLabelShotRequest:
+      type: object
+      additionalProperties: false
+      required: [sha256]
+      properties:
+        sha256: { $ref: '#/components/schemas/Sha256' }
+    LabelShot:
+      type: object
+      required: [id, clipId, offsetMs, status, sha256, serverSha256]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        clipId: { $ref: '#/components/schemas/Uuid' }
+        offsetMs: { type: integer }
+        status: { $ref: '#/components/schemas/ClipUploadStatus' }
+        sha256: { $ref: '#/components/schemas/NullableSha256' }
+        serverSha256: { $ref: '#/components/schemas/NullableSha256' }
+
+    # ---- processing
+    WalkProcessingStatus:
+      type: object
+      required: [walkId, walkStatus, stages, readyForReviewAt]
+      properties:
+        walkId: { $ref: '#/components/schemas/Uuid' }
+        walkStatus: { $ref: '#/components/schemas/WalkStatus' }
+        stages:
+          type: array
+          items:
+            type: object
+            required: [stage, modelVersion, counts]
+            properties:
+              stage: { $ref: '#/components/schemas/PipelineStage' }
+              modelVersion: { type: string }
+              counts:
+                type: object
+                additionalProperties: { type: integer, minimum: 0 }
+                propertyNames: { $ref: '#/components/schemas/JobStatus' }
+        readyForReviewAt: { $ref: '#/components/schemas/NullableTimestamp' }
+    ReprocessRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        modelVersion: { type: string, minLength: 1, maxLength: 100 }
+        stages:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/PipelineStage' }
+
+    # ---- review
+    SourceRegion:
+      type: object
+      additionalProperties: false
+      description: The image region a value was read from, each number a share of the frame from 0 to 1.
+      required: [frameId, x, y, width, height]
+      properties:
+        frameId: { $ref: '#/components/schemas/Uuid' }
+        x: { type: number, minimum: 0, maximum: 1 }
+        y: { type: number, minimum: 0, maximum: 1 }
+        width: { type: number, exclusiveMinimum: 0, maximum: 1 }
+        height: { type: number, exclusiveMinimum: 0, maximum: 1 }
+    FrameRef:
+      type: object
+      required: [frameId, clipId, timeCodeMs, clipSha256, url]
+      properties:
+        frameId: { $ref: '#/components/schemas/Uuid' }
+        clipId: { $ref: '#/components/schemas/Uuid' }
+        timeCodeMs: { type: integer, minimum: 0 }
+        clipSha256:
+          $ref: '#/components/schemas/Sha256'
+          description: The original clip's fingerprint (DMS-091).
+        url:
+          type: string
+          format: uri
+          description: A blurred derivative behind a signed URL that expires after 5 minutes (DMS-100).
+    LineEvidence:
+      type: object
+      required: [frames, labelStills, firstSightingMs, playFromMs]
+      properties:
+        frames: { type: array, items: { $ref: '#/components/schemas/FrameRef' } }
+        labelStills: { type: array, items: { $ref: '#/components/schemas/FrameRef' } }
+        firstSightingMs: { type: integer, minimum: 0 }
+        playFromMs: { type: integer, minimum: 0, description: Two seconds before the first sighting (DMS-041). }
+    AssetLine:
+      type: object
+      required: [lineId, version, walkId, roomId, assetId, kind, quantity, categoryId, description, make, model, serial, tagCode, condition, conditionReason, confidenceBand, status, approvedBy, approvedAt, evidence]
+      properties:
+        lineId: { $ref: '#/components/schemas/Uuid' }
+        version: { type: integer, minimum: 1 }
+        walkId: { $ref: '#/components/schemas/Uuid' }
+        roomId: { $ref: '#/components/schemas/Uuid' }
+        assetId: { $ref: '#/components/schemas/NullableUuid' }
+        kind: { $ref: '#/components/schemas/LineKind' }
+        quantity: { type: integer, minimum: 1 }
+        categoryId: { $ref: '#/components/schemas/Uuid' }
+        description: { $ref: '#/components/schemas/NullableString' }
+        make: { $ref: '#/components/schemas/NullableString' }
+        model: { $ref: '#/components/schemas/NullableString' }
+        serial: { $ref: '#/components/schemas/NullableString' }
+        tagCode: { $ref: '#/components/schemas/NullableString' }
+        condition: { $ref: '#/components/schemas/ConditionGrade' }
+        conditionReason: { $ref: '#/components/schemas/NullableString' }
+        confidenceBand:
+          anyOf:
+            - { $ref: '#/components/schemas/ConfidenceBand' }
+            - { type: 'null' }
+        status: { $ref: '#/components/schemas/LineStatus' }
+        approvedBy: { $ref: '#/components/schemas/NullableUuid' }
+        approvedAt: { $ref: '#/components/schemas/NullableTimestamp' }
+        evidence: { $ref: '#/components/schemas/LineEvidence' }
+    ReviewQueuePage:
+      type: object
+      required: [items, nextCursor, counts]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/AssetLine' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+        counts:
+          type: object
+          required: [low, medium, high]
+          properties:
+            low: { type: integer, minimum: 0 }
+            medium: { type: integer, minimum: 0 }
+            high: { type: integer, minimum: 0 }
+    AssetLineHistoryEntry:
+      type: object
+      required: [version, status, changedFields, decision, decidedBy, decidedAt, reason, viaManagedService]
+      properties:
+        version: { type: integer, minimum: 1 }
+        status: { $ref: '#/components/schemas/LineStatus' }
+        changedFields: { type: object, additionalProperties: true }
+        decision:
+          anyOf:
+            - { $ref: '#/components/schemas/ReviewDecisionKind' }
+            - { type: 'null' }
+        decidedBy: { $ref: '#/components/schemas/NullableUuid' }
+        decidedAt: { $ref: '#/components/schemas/Timestamp' }
+        reason: { $ref: '#/components/schemas/NullableString' }
+        viaManagedService: { type: boolean, description: DMS-056. }
+    AssetLineHistoryPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/AssetLineHistoryEntry' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+    LineChanges:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      description: Serial, model and tag values must come with the region they were read from (Part 5).
+      properties:
+        categoryId: { $ref: '#/components/schemas/Uuid' }
+        kind: { $ref: '#/components/schemas/LineKind' }
+        quantity: { type: integer, minimum: 1, maximum: 100000 }
+        description: { type: [string, 'null'], maxLength: 500 }
+        make: { type: [string, 'null'], maxLength: 120 }
+        makeSourceRegion: { $ref: '#/components/schemas/SourceRegion' }
+        model: { type: string, minLength: 1, maxLength: 120 }
+        modelSourceRegion: { $ref: '#/components/schemas/SourceRegion' }
+        serial: { type: string, minLength: 1, maxLength: 120 }
+        serialSourceRegion: { $ref: '#/components/schemas/SourceRegion' }
+        tagCode: { type: string, minLength: 1, maxLength: 120 }
+        tagSourceRegion: { $ref: '#/components/schemas/SourceRegion' }
+        condition: { $ref: '#/components/schemas/ConditionGrade' }
+        conditionReason: { type: [string, 'null'], maxLength: 500 }
+      dependentRequired:
+        serial: [serialSourceRegion]
+        model: [modelSourceRegion]
+        tagCode: [tagSourceRegion]
+    DecisionRequest:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [kind, lineId]
+          properties:
+            kind: { const: accept }
+            lineId: { $ref: '#/components/schemas/Uuid' }
+        - type: object
+          additionalProperties: false
+          required: [kind, lineId, changes]
+          properties:
+            kind: { const: edit }
+            lineId: { $ref: '#/components/schemas/Uuid' }
+            changes: { $ref: '#/components/schemas/LineChanges' }
+        - type: object
+          additionalProperties: false
+          required: [kind, lineId]
+          properties:
+            kind: { const: reject }
+            lineId: { $ref: '#/components/schemas/Uuid' }
+            reason: { type: string, maxLength: 500 }
+        - type: object
+          additionalProperties: false
+          required: [kind, lineIds, survivorLineId]
+          properties:
+            kind: { const: merge }
+            lineIds:
+              type: array
+              minItems: 2
+              maxItems: 50
+              uniqueItems: true
+              items: { $ref: '#/components/schemas/Uuid' }
+            survivorLineId: { $ref: '#/components/schemas/Uuid' }
+        - type: object
+          additionalProperties: false
+          required: [kind, lineId, parts]
+          properties:
+            kind: { const: split }
+            lineId: { $ref: '#/components/schemas/Uuid' }
+            parts:
+              type: array
+              minItems: 2
+              maxItems: 50
+              items: { $ref: '#/components/schemas/LineChanges' }
+    DecisionResult:
+      type: object
+      required: [lines]
+      properties:
+        lines: { type: array, items: { $ref: '#/components/schemas/AssetLine' } }
+    ReviseLineRequest:
+      type: object
+      additionalProperties: false
+      required: [changes, reason]
+      properties:
+        changes: { $ref: '#/components/schemas/LineChanges' }
+        reason: { type: string, minLength: 1, maxLength: 1000, pattern: '\S', description: DMS-093. }
+    BulkApprovalRequest:
+      type: object
+      additionalProperties: false
+      required: [lineIds, shownInGridLineIds]
+      properties:
+        lineIds:
+          type: array
+          minItems: 1
+          maxItems: 500
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/Uuid' }
+        shownInGridLineIds:
+          description: Lines the reviewer saw in the grid before approving (DMS-052).
+          type: array
+          minItems: 1
+          maxItems: 500
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/Uuid' }
+    BulkApprovalResult:
+      type: object
+      required: [approvedLineIds]
+      properties:
+        approvedLineIds: { type: array, items: { $ref: '#/components/schemas/Uuid' } }
+    WalkApprovalResult:
+      type: object
+      required: [walk, comparisonId, reconciliationQueued]
+      properties:
+        walk: { $ref: '#/components/schemas/Walk' }
+        comparisonId: { $ref: '#/components/schemas/NullableUuid' }
+        reconciliationQueued: { type: boolean }
+
+    # ---- assets
+    Asset:
+      type: object
+      required: [id, tagCode, serial, categoryId, currentSiteId, currentRoomId, latestCondition]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        tagCode: { $ref: '#/components/schemas/NullableString' }
+        serial: { $ref: '#/components/schemas/NullableString' }
+        categoryId: { $ref: '#/components/schemas/Uuid' }
+        currentSiteId: { $ref: '#/components/schemas/Uuid' }
+        currentRoomId: { $ref: '#/components/schemas/NullableUuid' }
+        latestCondition:
+          anyOf:
+            - { $ref: '#/components/schemas/ConditionGrade' }
+            - { type: 'null' }
+    AssetPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Asset' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+    ConditionHistoryEntry:
+      type: object
+      required: [walkId, walkDate, condition, conditionReason, frames]
+      properties:
+        walkId: { $ref: '#/components/schemas/Uuid' }
+        walkDate: { $ref: '#/components/schemas/Timestamp' }
+        condition: { $ref: '#/components/schemas/ConditionGrade' }
+        conditionReason: { $ref: '#/components/schemas/NullableString' }
+        frames: { type: array, items: { $ref: '#/components/schemas/FrameRef' } }
+    ConditionHistoryPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ConditionHistoryEntry' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+
+    # ---- reconciliation
+    StartReconciliationRequest:
+      type: object
+      additionalProperties: false
+      required: [scope, registerImportId]
+      properties:
+        scope:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [kind, siteId]
+              properties:
+                kind: { const: site }
+                siteId: { $ref: '#/components/schemas/Uuid' }
+            - type: object
+              additionalProperties: false
+              required: [kind]
+              properties:
+                kind: { const: group }
+        registerImportId: { $ref: '#/components/schemas/Uuid' }
+    Reconciliation:
+      type: object
+      required: [id, scope, siteId, registerImportId, status, counts, valueAtRiskKobo, startedAt, finishedAt]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        scope: { type: string, enum: [site, group] }
+        siteId: { $ref: '#/components/schemas/NullableUuid' }
+        registerImportId: { $ref: '#/components/schemas/Uuid' }
+        status: { type: string, enum: [running, ready, failed] }
+        counts:
+          type: object
+          additionalProperties: { type: integer, minimum: 0 }
+          propertyNames: { $ref: '#/components/schemas/ReconStatus' }
+        valueAtRiskKobo:
+          $ref: '#/components/schemas/Kobo'
+          description: Total book value of register lines not seen (DMS-062).
+        startedAt: { $ref: '#/components/schemas/Timestamp' }
+        finishedAt: { $ref: '#/components/schemas/NullableTimestamp' }
+    ReconciliationPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Reconciliation' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+    ReconciliationMatch:
+      type: object
+      required: [id, status, statusLabel, registerLineId, assetLineId, assetId, method, score, reasons, requiresConfirmation, confirmedBy, registerSiteId, foundSiteId, bookValueKobo]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        status: { $ref: '#/components/schemas/ReconStatus' }
+        statusLabel: { type: string, description: '"Not seen on this walk" until an investigation records an outcome (DMS-063).' }
+        registerLineId: { $ref: '#/components/schemas/NullableUuid' }
+        assetLineId: { $ref: '#/components/schemas/NullableUuid' }
+        assetId: { $ref: '#/components/schemas/NullableUuid' }
+        method:
+          anyOf:
+            - { $ref: '#/components/schemas/ReconMatchMethod' }
+            - { type: 'null' }
+        score: { type: [number, 'null'], minimum: 0, maximum: 1 }
+        reasons: { type: array, items: { type: string } }
+        requiresConfirmation: { type: boolean }
+        confirmedBy: { $ref: '#/components/schemas/NullableUuid' }
+        registerSiteId: { $ref: '#/components/schemas/NullableUuid' }
+        foundSiteId: { $ref: '#/components/schemas/NullableUuid' }
+        bookValueKobo: { $ref: '#/components/schemas/NullableKobo' }
+    ReconciliationMatchPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ReconciliationMatch' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+    ConfirmMatchRequest:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [confirm, reject] }
+    CreateCorrectionsExportRequest:
+      type: object
+      additionalProperties: false
+      required: [format]
+      properties:
+        format: { type: string, enum: [xlsx, csv] }
+    CorrectionsExport:
+      type: object
+      required: [id, reconciliationId, format, status, download]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        reconciliationId: { $ref: '#/components/schemas/Uuid' }
+        format: { type: string, enum: [xlsx, csv] }
+        status: { type: string, enum: [pending, ready, failed] }
+        download: { $ref: '#/components/schemas/NullableSignedTransfer' }
+
+    # ---- comparison
+    Comparison:
+      type: object
+      required: [id, walkId, previousWalkId, previousWalkDate, headline, status, changeCount, roomNotFilmedCount, unchangedCount, countsByStatus]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        walkId: { $ref: '#/components/schemas/Uuid' }
+        previousWalkId: { $ref: '#/components/schemas/NullableUuid' }
+        previousWalkDate: { $ref: '#/components/schemas/NullableTimestamp' }
+        headline: { type: string, description: 'For example "9 changes since the walk on 3 October" (Part 5).' }
+        status: { type: string, enum: [pending, ready, failed] }
+        changeCount: { type: integer, minimum: 0 }
+        roomNotFilmedCount: { type: integer, minimum: 0 }
+        unchangedCount: { type: integer, minimum: 0 }
+        countsByStatus:
+          type: object
+          additionalProperties: { type: integer, minimum: 0 }
+          propertyNames: { $ref: '#/components/schemas/ChangeStatus' }
+    ChangeItem:
+      type: object
+      required: [id, status, statusLabel, assetId, beforeLineId, afterLineId, quantityBefore, quantityAfter, quantityDelta, conditionChange, matchedBy, beforeFrames, afterFrames]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        status: { $ref: '#/components/schemas/ChangeStatus' }
+        statusLabel: { type: string }
+        assetId: { $ref: '#/components/schemas/NullableUuid' }
+        beforeLineId: { $ref: '#/components/schemas/NullableUuid' }
+        afterLineId: { $ref: '#/components/schemas/NullableUuid' }
+        quantityBefore: { type: [integer, 'null'] }
+        quantityAfter: { type: [integer, 'null'] }
+        quantityDelta: { type: [integer, 'null'], description: '"24 chairs, was 32" is -8 (DMS-073).' }
+        conditionChange: { type: [string, 'null'], enum: [worse, better, null] }
+        matchedBy:
+          anyOf:
+            - { $ref: '#/components/schemas/ComparisonMatchMethod' }
+            - { type: 'null' }
+        beforeFrames: { type: array, items: { $ref: '#/components/schemas/FrameRef' } }
+        afterFrames: { type: array, items: { $ref: '#/components/schemas/FrameRef' } }
+    ChangeItemPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ChangeItem' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+    AssignInvestigationRequest:
+      type: object
+      additionalProperties: false
+      required: [changeItemId, ownerUserId, dueDate]
+      properties:
+        changeItemId: { $ref: '#/components/schemas/Uuid' }
+        ownerUserId: { $ref: '#/components/schemas/Uuid' }
+        dueDate: { type: string, format: date }
+    Investigation:
+      type: object
+      required: [id, changeItemId, assetId, status, ownerUserId, assignedBy, dueDate, outcome, outcomeNote, outcomeRecordedBy, outcomeRecordedAt, transferredTo]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        changeItemId: { $ref: '#/components/schemas/Uuid' }
+        assetId: { $ref: '#/components/schemas/NullableUuid' }
+        status: { $ref: '#/components/schemas/InvestigationStatus' }
+        ownerUserId: { $ref: '#/components/schemas/Uuid' }
+        assignedBy: { $ref: '#/components/schemas/Uuid' }
+        dueDate: { type: string, format: date }
+        outcome:
+          anyOf:
+            - { $ref: '#/components/schemas/InvestigationOutcome' }
+            - { type: 'null' }
+        outcomeNote: { $ref: '#/components/schemas/NullableString' }
+        outcomeRecordedBy: { $ref: '#/components/schemas/NullableUuid' }
+        outcomeRecordedAt: { $ref: '#/components/schemas/NullableTimestamp' }
+        transferredTo:
+          anyOf:
+            - type: object
+              required: [siteId, roomId]
+              properties:
+                siteId: { $ref: '#/components/schemas/Uuid' }
+                roomId: { $ref: '#/components/schemas/NullableUuid' }
+            - { type: 'null' }
+    InvestigationPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Investigation' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+    RecordOutcomeRequest:
+      type: object
+      additionalProperties: false
+      required: [outcome]
+      properties:
+        outcome: { $ref: '#/components/schemas/InvestigationOutcome' }
+        note: { type: string, maxLength: 2000 }
+        transferredTo:
+          type: object
+          additionalProperties: false
+          required: [siteId]
+          properties:
+            siteId: { $ref: '#/components/schemas/Uuid' }
+            roomId: { $ref: '#/components/schemas/Uuid' }
+      if:
+        properties: { outcome: { const: transferred } }
+      then:
+        required: [transferredTo]
+      else:
+        not: { required: [transferredTo] }
+
+    # ---- reports
+    GenerateReportRequest:
+      type: object
+      additionalProperties: false
+      required: [type, scope]
+      properties:
+        type: { $ref: '#/components/schemas/ReportType' }
+        scope:
+          type: object
+          additionalProperties: false
+          properties:
+            siteId: { $ref: '#/components/schemas/Uuid' }
+            roomId: { $ref: '#/components/schemas/Uuid' }
+            asOf: { type: string, format: date, description: 'For a loss pack, the last approved state before this date (DMS-083).' }
+    Report:
+      type: object
+      required: [id, type, scope, status, verificationCode, sha256, generatedBy, generatedAt, download]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        type: { $ref: '#/components/schemas/ReportType' }
+        scope: { type: object, additionalProperties: true }
+        status: { type: string, enum: [generating, issued, failed] }
+        verificationCode:
+          anyOf:
+            - { $ref: '#/components/schemas/VerificationCode' }
+            - { type: 'null' }
+        sha256: { $ref: '#/components/schemas/NullableSha256' }
+        generatedBy: { $ref: '#/components/schemas/Uuid' }
+        generatedAt: { $ref: '#/components/schemas/NullableTimestamp' }
+        download: { $ref: '#/components/schemas/NullableSignedTransfer' }
+    ReportPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Report' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+    ReportVerification:
+      type: object
+      required: [result, message]
+      properties:
+        result: { type: string, enum: [matches, does_not_match, unknown_code] }
+        message: { type: string, description: '"Matches the issued report" or "Does not match the issued report" (DMS-086).' }
+
+    # ---- evidence
+    AuditEvent:
+      type: object
+      required: [id, actorKind, actorUserId, action, objectType, objectId, before, after, reason, requestId, at]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        actorKind: { type: string, enum: [user, partner, managed_review, service, system] }
+        actorUserId: { $ref: '#/components/schemas/NullableUuid' }
+        action: { $ref: '#/components/schemas/AuditAction' }
+        objectType: { type: string }
+        objectId: { $ref: '#/components/schemas/NullableString' }
+        before: {}
+        after: {}
+        reason: { $ref: '#/components/schemas/NullableString' }
+        requestId: { $ref: '#/components/schemas/NullableString' }
+        at: { $ref: '#/components/schemas/Timestamp' }
+    AuditEventPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/AuditEvent' } }
+        nextCursor: { $ref: '#/components/schemas/NullableString' }
+    ClipEvidence:
+      type: object
+      required: [clipId, sha256, serverSha256, capturedBy, deviceId, startedAtDevice, endedAtDevice, deviceTime, serverTime, clockGapFlag, location, playback]
+      properties:
+        clipId: { $ref: '#/components/schemas/Uuid' }
+        sha256: { $ref: '#/components/schemas/Sha256' }
+        serverSha256: { $ref: '#/components/schemas/Sha256' }
+        capturedBy: { $ref: '#/components/schemas/Uuid' }
+        deviceId: { type: string }
+        startedAtDevice: { $ref: '#/components/schemas/Timestamp' }
+        endedAtDevice: { $ref: '#/components/schemas/Timestamp' }
+        deviceTime: { $ref: '#/components/schemas/Timestamp' }
+        serverTime: { $ref: '#/components/schemas/Timestamp' }
+        clockGapFlag: { type: boolean }
+        location:
+          anyOf:
+            - { $ref: '#/components/schemas/CaptureLocation' }
+            - { type: 'null' }
+        playback:
+          $ref: '#/components/schemas/SignedTransfer'
+          description: Blurred playback, valid for 5 minutes.
+    ReasonRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 1000, pattern: '\S' }
+    UnblurredView:
+      type: object
+      required: [playback, auditEventId]
+      properties:
+        playback: { $ref: '#/components/schemas/SignedTransfer' }
+        auditEventId: { $ref: '#/components/schemas/Uuid' }
+    LegalHold:
+      type: object
+      required: [id, siteId, reason, placedBy, placedAt, liftApprovals, liftedAt]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        siteId: { $ref: '#/components/schemas/Uuid' }
+        reason: { type: string }
+        placedBy: { $ref: '#/components/schemas/Uuid' }
+        placedAt: { $ref: '#/components/schemas/Timestamp' }
+        liftApprovals: { type: array, maxItems: 2, items: { $ref: '#/components/schemas/Uuid' } }
+        liftedAt: { $ref: '#/components/schemas/NullableTimestamp' }
+
+    # ---- notifications and billing
+    WalkScheduleInput:
+      type: object
+      additionalProperties: false
+      required: [frequency, overdueAfterDays]
+      properties:
+        frequency: { type: string, enum: [monthly, quarterly] }
+        overdueAfterDays: { type: integer, minimum: 1, maximum: 400, description: 'For example 35 for a monthly site (DMS-112).' }
+        escalateToUserId: { $ref: '#/components/schemas/Uuid' }
+    WalkSchedule:
+      type: object
+      required: [siteId, frequency, overdueAfterDays, escalateToUserId]
+      properties:
+        siteId: { $ref: '#/components/schemas/Uuid' }
+        frequency: { type: string, enum: [monthly, quarterly] }
+        overdueAfterDays: { type: integer }
+        escalateToUserId: { $ref: '#/components/schemas/NullableUuid' }
+    PlanUsage:
+      type: object
+      required: [planCode, siteLimit, sitesUsed, walksThisPeriod, videoMinutesThisPeriod, videoMinutesPerWalk]
+      properties:
+        planCode: { type: string }
+        siteLimit: { type: integer }
+        sitesUsed: { type: integer }
+        walksThisPeriod: { type: integer }
+        videoMinutesThisPeriod: { type: number }
+        videoMinutesPerWalk: { type: integer }
+    WalkUsage:
+      type: object
+      required: [walkId, videoMinutes, planUnits]
+      properties:
+        walkId: { $ref: '#/components/schemas/Uuid' }
+        videoMinutes: { type: number }
+        planUnits: { type: number }

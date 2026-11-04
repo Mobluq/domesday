@@ -1,0 +1,29 @@
+{
+  "name": "@domesday/tokens",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Design tokens from the Domesday Design System, built into CSS custom properties, a TypeScript module, type classes and the component stylesheet.",
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    ".": "./src/generated/tokens.ts",
+    "./tokens.css": "./src/generated/tokens.css",
+    "./typography.css": "./src/generated/typography.css",
+    "./components.css": "./design-system/components.css"
+  },
+  "scripts": {
+    "sync": "tsx scripts/sync-design-system.ts",
+    "build": "tsx scripts/build.ts",
+    "check": "tsx scripts/build.ts --check",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "vitest": "^5.1.0"
+  }
+}

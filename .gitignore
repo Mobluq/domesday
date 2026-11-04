@@ -1,0 +1,22 @@
+node_modules/
+dist/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+
+# Throwaway local Postgres clusters and other scratch output
+.tmp/
+
+# Python
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Expo
+.expo/
+apps/capture/android/
+apps/capture/ios/

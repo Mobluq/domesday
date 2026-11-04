@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "Domesday Capture",
+    "slug": "domesday-capture",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "platforms": ["android", "ios"],
+    "userInterfaceStyle": "automatic"
+  }
+}
