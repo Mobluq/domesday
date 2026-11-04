@@ -2,6 +2,7 @@ import { categoryName, categoryPlural, comparison, fmtDate, fmtDateTime, liveLin
 import type { AppData, WalkBundle } from '../data/store';
 import type { Line, Site } from '../data/types';
 import { currentAccessCode } from '../runtime/runtime';
+import { changeProtocol, NO_CHANGES } from './changes';
 import type { Runtime } from '../runtime/runtime';
 
 /**
@@ -191,7 +192,7 @@ export function buildInventoryContext(data: AppData, limit = MAX_CONTEXT_CHARS):
   return out;
 }
 
-export function askInstructions(data: AppData, personLabel: string | null): string {
+export function askInstructions(data: AppData, personLabel: string | null, canChange = false): string {
   const site = data.site?.name ?? 'this site';
   return `You are the inventory assistant inside Domesday, a fixed asset register built from walk-through video. You answer questions${personLabel ? ` from ${personLabel}` : ''} about ${site}, using only the inventory below.
 
@@ -206,6 +207,8 @@ How to answer:
 - British English. Plain sentences and "-" bullets only: no headings, tables or bold.
 
 Today is ${fmtDate(new Date().toISOString())}.
+
+${canChange && data.site ? changeProtocol(data.site) : NO_CHANGES}
 
 INVENTORY
 ${buildInventoryContext(data)}`;

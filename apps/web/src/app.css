@@ -370,3 +370,17 @@ td .cam-hint { margin-right: 8px; }
 .ask__send { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border: 0; border-radius: var(--radius-s); background: var(--button-primary); color: var(--button-primary-text); cursor: pointer; }
 .ask__send:disabled { opacity: 0.35; cursor: not-allowed; }
 .ask__foot { margin: 0; padding: 4px 14px 12px; font: 400 12px/16px var(--font-sans); color: var(--text-tertiary); }
+.ask__perm { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 18px; border-bottom: var(--stroke-hairline) solid var(--rule); background: var(--surface); cursor: pointer; }
+.ask__perm input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--button-primary); }
+.ask__perm input:disabled { cursor: not-allowed; }
+.ask__perm[data-on] { background: var(--confirmed-tint); }
+.ask__changes { display: grid; gap: 8px; margin-top: 10px; }
+.ask__change { display: grid; gap: 6px; padding: 12px; border-radius: var(--radius-s); border: var(--stroke-hairline) solid var(--rule-strong); background: var(--surface); }
+.ask__change[data-state="done"] { border-color: var(--confirmed-mark); }
+.ask__change[data-state="refused"] { border-color: var(--not-seen-mark); }
+.ask__change[data-state="skipped"] { opacity: 0.6; }
+.ask__apply { min-height: 36px; padding-block: 4px; }
+.ask__status { display: inline-flex; align-items: center; gap: 6px; font: 400 14px/20px var(--font-sans); }
+.ask__status--ok { color: var(--confirmed-text); }
+.ask__status--no { color: var(--not-seen-text); }
+.ask__problem { margin: 0; font: 400 13px/18px var(--font-sans); color: var(--text-secondary); }

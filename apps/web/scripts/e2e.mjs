@@ -92,6 +92,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const fakeSample = Object.assign(async (input, opts = {}) => {
   if (String(input).includes('inventory assistant inside Domesday')) {
     window.__askPrompts = (window.__askPrompts || []).concat([{ prompt: input, tier: opts.modelTier }]);
+    const lastQ = String(input).slice(String(input).lastIndexOf('QUESTION: '));
+    if (String(input).includes('You can propose changes') && /investigation/i.test(lastQ)) {
+      const t = 'I can open that investigation for the television.\\n<changes>[{"action":"add_followup","kind":"investigation","title":"Find the Sony television from Room 204","register":"FA-1043","room":"Room 204","owner":"Tolu Adeyemi","due":"2026-11-11"}]</changes>';
+      for (let i = 1; i <= 3; i++) { await sleep(100); opts.onText && opts.onText({ text: t.slice(0, Math.floor(t.length * i / 3)), delta: '' }); }
+      return { text: t, truncated: false };
+    }
     const text = 'Six register lines were not seen on this walk, with a book value of ₦3,970,000.\\n- FA-1043 Television, Sony 43-inch, Room 204\\n- FA-0391 Laptop, HP ProBook 450, Room 112';
     for (let i = 1; i <= 4; i++) { await sleep(120); opts.onText && opts.onText({ text: text.slice(0, Math.floor(text.length * i / 4)), delta: '' }); }
     return { text, truncated: false };
@@ -226,7 +232,21 @@ await page.locator('.ask__a[data-streaming]').waitFor({ state: 'detached', timeo
 const asked = await page.evaluate(() => window.__askPrompts?.[0] ?? { prompt: '', tier: null });
 step(`assistant answered on the ${asked.tier} tier; its prompt carried the register (${asked.prompt.includes('FIXED ASSET REGISTER')}), numbered lines (${/Line \d{3} \|/.test(asked.prompt)}) and the not-seen list (${asked.prompt.includes('Not seen:')})`);
 await shot(page, '23-ask-answer', false);
+// With permission on, a change is proposed as a card and only happens on Apply.
+await page.getByRole('switch').check();
+await page.locator('#ask-input').fill('Open an investigation for the television, owned by Tolu, due 11 November');
+await page.locator('#ask-input').press('Enter');
+await page.getByText('Add an investigation').waitFor({ timeout: 10000 });
+const changesPrompt = await page.evaluate(() => window.__askPrompts.at(-1).prompt.includes('You can propose changes'));
+await shot(page, '24-ask-change', false);
+await page.locator('.ask__change').getByRole('button', { name: 'Apply' }).click();
+await page.locator('.ask__status--ok').filter({ hasText: 'Investigation added' }).waitFor({ timeout: 10000 });
+step(`assistant proposed an investigation (permission in its prompt: ${changesPrompt}); applied only on Apply`);
 await page.getByRole('dialog', { name: 'Ask about the inventory' }).getByRole('button', { name: 'Close' }).click();
+await page.goto(`${base}#reconcile`);
+await page.getByRole('heading', { level: 1 }).waitFor();
+const assigned = await page.locator('tr', { hasText: 'FA-1043' }).innerText();
+step(`reconciliation row for FA-1043 now says: ${assigned.includes('Assigned to Tolu Adeyemi') ? 'Assigned to Tolu Adeyemi' : assigned.replace(/\s+/g, ' ')}`);
 
 await page.goto(`${base}#report`);
 await page.getByRole('button', { name: 'Issue the report' }).click();
