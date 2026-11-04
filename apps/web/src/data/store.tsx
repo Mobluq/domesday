@@ -106,7 +106,8 @@ export function DataProvider({ children, fallback }: { children: ReactNode; fall
   }, []);
 
   useEffect(() => {
-    if (!rt) return undefined;
+    // Without the website's access code every read would be refused; the app asks for it first.
+    if (!rt || rt.needsAccessCode) return undefined;
     const unsubs = [
       rt.db.doc('site/main').onSnapshot((s) => setSite(docData<Site>(s))),
       rt.db.doc('register/main').onSnapshot((s) => setRegister(docData<Register>(s))),

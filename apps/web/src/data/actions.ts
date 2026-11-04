@@ -1,6 +1,5 @@
 import { checkApproverSeparation, checkEditAfterApproval, checkWalkApproval, type ApproverCheck } from '@domesday/domain';
 import { loadSeed, type Runtime } from '../runtime/runtime';
-import { pruneAssets } from '../runtime/media';
 import type { Json } from '../runtime/types';
 import { nowIso } from './derive';
 import type { WalkBundle } from './store';
@@ -14,22 +13,10 @@ export function newId(prefix: string): string {
 
 export async function seedStore(rt: Runtime): Promise<void> {
   const seed = await loadSeed();
-  for (const [path, data] of Object.entries(seed.docs)) await rt.db.doc(path).set(data);
-}
-
-/** Put the demo back to the start: the 3 October walk, the register and an empty current walk. */
-export async function resetDemo(rt: Runtime, site: Site): Promise<void> {
-  const seed = await loadSeed();
-  const current = `walks/${site.currentWalkId}`;
-  for (const sub of ['rooms', 'lines', 'matches', 'followups']) {
-    const snap = await rt.db.collection(`${current}/${sub}`).get();
-    for (const d of snap.docs) await rt.db.doc(`${current}/${sub}/${d.id}`).delete();
-  }
-  const reports = await rt.db.collection('reports').get();
-  for (const d of reports.docs) await rt.db.doc(`reports/${d.id}`).delete();
-  for (const [path, data] of Object.entries(seed.docs)) await rt.db.doc(path).set(data);
-  // Frames uploaded during the demo are no longer pointed at by any document.
-  await pruneAssets(rt, new Set());
+  // The site document goes last: the app treats its arrival as "this copy has a site".
+  const { 'site/main': site, ...rest } = seed.docs;
+  for (const [path, data] of Object.entries(rest)) await rt.db.doc(path).set(data);
+  if (site) await rt.db.doc('site/main').set(site);
 }
 
 export async function logEvent(rt: Runtime, walk: Walk, event: Omit<WalkEvent, 'at'>): Promise<void> {

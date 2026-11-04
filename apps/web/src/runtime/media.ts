@@ -3,7 +3,8 @@ import type { Runtime } from './runtime';
 
 /**
  * Frames and label shots: where they are stored and how to show them.
- * Stored as asset ids in the shared store; served at /_blob/<id> in every view.
+ * Stored as asset ids in the shared store; served at /_blob/<id> inside the artifact and at
+ * ./api/blob?id=<id> on the website (connectRuntime picks which, once).
  * Published files (the demo walk's frames, sample footage) are relative paths.
  * Without the assets capability, frames live in memory for this page load.
  */
@@ -11,11 +12,19 @@ import type { Runtime } from './runtime';
 const localBlobs = new Map<string, { blob: Blob; url: string }>();
 let localCounter = 0;
 
+export type AssetUrlMode = 'artifact' | 'server';
+let assetUrlMode: AssetUrlMode = 'artifact';
+
+/** Where stored assets are served from. Set by connectRuntime. */
+export function setAssetUrlMode(mode: AssetUrlMode): void {
+  assetUrlMode = mode;
+}
+
 export function urlFor(ref: MediaRef | null | undefined): string | null {
   if (!ref) return null;
   switch (ref.kind) {
     case 'asset':
-      return `/_blob/${ref.id}`;
+      return assetUrlMode === 'server' ? `./api/blob?id=${encodeURIComponent(ref.id)}` : `/_blob/${ref.id}`;
     case 'file':
       return ref.path;
     case 'local':
@@ -79,9 +88,12 @@ export async function pruneAssets(rt: Runtime, keep: ReadonlySet<string>): Promi
   return removed;
 }
 
-/** Offer a file to the viewer. Inside an artifact this goes through the downloads capability. */
+/**
+ * Offer a file to the viewer. Inside an artifact this goes through the downloads capability;
+ * on the website and locally it is a normal browser download.
+ */
 export async function saveFile(rt: Runtime, filename: string, data: string | Blob, type = 'text/plain'): Promise<'saved' | 'declined' | 'unavailable'> {
-  if (rt.downloads) {
+  if (rt.downloads && rt.mode !== 'server') {
     try {
       await rt.downloads.save({ filename, data });
       return 'saved';

@@ -21,6 +21,8 @@ import { useData, usePersona, useToast } from '../data/store';
 import type { Line } from '../data/types';
 import { saveFile, urlFor } from '../runtime/media';
 import { Btn, Chip, EvidenceFrame, Label, Note } from '../ui/bits';
+import { CameraHint } from './Cameras';
+import { go } from '../route';
 
 function csvCell(v: unknown): string {
   const s = v === null || v === undefined ? '' : String(v);
@@ -34,7 +36,28 @@ export function ReconciliationPage(): ReactElement {
   const [showFound, setShowFound] = useState(false);
   const result = useMemo(() => (site && current ? reconciliation(site, register, current) : null), [site, register, current]);
   const frames = useMemo(() => framesOf(current), [current]);
-  if (!site || !current || !result || !register) return <main className="page" />;
+  if (!site || !current || !result) return <main className="page" />;
+  if (!register) {
+    return (
+      <main className="page page--narrow">
+        <div className="stack-l" style={{ paddingBlock: '40px' }}>
+          <Label>RECONCILIATION · {site.name.toUpperCase()}</Label>
+          <h1 className="display-m" style={{ margin: 0 }}>
+            Add the register to check this walk against the books
+          </h1>
+          <p className="ui-body muted" style={{ margin: 0 }}>
+            Export the fixed asset register from Excel, Sage or your ERP as CSV and bring it in from Site setup. Each approved walk is then reconciled against it: what was found,
+            what was found in another room, what wasn't seen, and what isn't in the books at all.
+          </p>
+          <div>
+            <Btn variant="primary" icon="books" onClick={() => go('site')}>
+              Import the register
+            </Btn>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   const approved = current.walk.status === 'approved';
   const lines = new Map(current.lines.map((l) => [l.id, l]));
@@ -287,6 +310,7 @@ export function ReconciliationPage(): ReactElement {
                         <td className="data muted">{i.partOfGroup ? fmtShortDate(current.walk.startedAt) || 'This walk' : lastSeen(i.registerId)}</td>
                         <td className="num">{amount(i.valueKobo)}</td>
                         <td style={{ textAlign: 'right' }}>
+                          <CameraHint roomId={i.bookRoomId} registerId={i.registerId} />
                           {inv ? (
                             <span className="ui-body-s">Assigned to {personName(site, inv.owner)}</span>
                           ) : (

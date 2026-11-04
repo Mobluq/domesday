@@ -73,7 +73,17 @@ window.__answers = {
     { category: 'generator', description: 'Petrol generator in an open frame', kind: 'single_item', quantity: 1, condition: 'fair', condition_reason: 'Surface rust on the frame', confidence: 'high', confidence_reason: 'Clearly visible', safety: null, seen_in: [{ image: 'F1', box: [0.06, 0.1, 0.88, 0.78] }], reads: [] }
   ], privacy: [], room_note: 'No inverter or batteries were in view.' }
 };
+const cameraAnswer = (prompt) => {
+  const refs = [...prompt.matchAll(/^(E\\d+): (.*)$/gm)].map((m) => ({ ref: m[1], text: m[2] }));
+  return {
+    expected: refs.map((r, i) => ({ ref: r.ref, status: /chair|table/i.test(r.text) ? 'visible' : 'not_visible', box: i === 0 ? [0, 0.72, 0.25, 0.28] : [0.25, 0.5, 0.2, 0.3], note: /chair/i.test(r.text) ? 'Two chairs in view' : '' })),
+    other: [],
+    privacy: [],
+    note: 'The camera sees the near end of the table and the door; the projector end is out of shot.',
+  };
+};
 const answerFor = (prompt) => {
+  if (prompt.includes('checking a still from a fixed CCTV camera')) return cameraAnswer(prompt);
   const m = /One room: ([^(]+) \\(/.exec(prompt) || /come from one room: ([^(]+) \\(/.exec(prompt);
   const room = m ? m[1].trim() : '';
   return window.__answers[room] || { lines: [], privacy: [], room_note: 'Nothing recognised.' };
@@ -99,10 +109,12 @@ window.claude = { use: async (name) => {
 
 const browser = await chromium.launch();
 const errors = [];
-async function newPage(viewport, persona) {
+async function newPage(viewport, persona, opts = {}) {
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1 });
   await ctx.addInitScript(FAKE);
   if (persona) await ctx.addInitScript(`try{localStorage.setItem('domesday.persona','${persona}')}catch(e){}`);
+  // The first-run tour is tested on its own; elsewhere it is marked as seen.
+  if (!opts.tour) await ctx.addInitScript(`try{for (const id of ['tolu','chinedu','ifeoma','ada','folu']) localStorage.setItem('domesday.tour.v1.'+id,'1')}catch(e){}`);
   const page = await ctx.newPage();
   page.on('console', (m) => {
     if (m.type() === 'error') errors.push(m.text());
@@ -221,6 +233,26 @@ await page.getByText('Does not match the issued report').waitFor({ timeout: 5000
 step(`tampered file check: does not match (changed: ${tampered !== html})`);
 await shot(page, '09-verify');
 
+// Cameras: a check with CAM 01's sample still, then the hint on the comparison's not-seen rows.
+await page.goto(`${base}#cameras`);
+await page.getByRole('heading', { name: 'Camera checks between walks' }).waitFor();
+await page.locator('section[aria-label^="CAM 01"]').getByRole('button', { name: 'Check now with the sample still' }).click();
+await page.locator('section[aria-label^="CAM 01"]').getByText('Visible', { exact: true }).first().waitFor({ timeout: 20000 });
+const camCounts = await page.locator('section[aria-label^="CAM 01"]').evaluate((el) => ({ visible: el.querySelectorAll('.dms-chip').length, text: el.innerText.includes('not visible from this camera') || el.innerText.includes('Not visible from this camera') }));
+step(`camera check on CAM 01: ${camCounts.visible} chips, says "not visible from this camera" for some: ${camCounts.text}`);
+await shot(page, '12-cameras');
+await page.goto(`${base}#compare`);
+await page.getByRole('heading', { name: /changes? since the walk on 3 October/ }).waitFor();
+const hints = await page.locator('.cam-hint').count();
+step(`comparison shows ${hints} camera hints on not-seen rows`);
+
+// Start the next walk from the walks page.
+await page.goto(`${base}#walks`);
+await page.getByRole('button', { name: 'Start the next walk' }).click();
+await page.getByRole('heading', { name: 'Monthly walk' }).waitFor({ timeout: 10000 });
+step('next walk started; the approved walk is now the one it is compared against');
+await shot(page, '13-next-walk');
+
 // Phone views.
 const phone = await newPage({ width: 390, height: 844 }, 'tolu');
 await phone.goto(`${base}#capture`);
@@ -230,6 +262,82 @@ await phone.getByRole('button', { name: /^Room 204:/ }).click();
 await shot(phone, '11-phone-room', true);
 const widths = await phone.evaluate(() => ({ doc: document.documentElement.scrollWidth, win: window.innerWidth }));
 step(`phone width check: document ${widths.doc}px, window ${widths.win}px`);
+
+// Guided capture on the phone: one room with the sample footage, then the next room, then hold to exit.
+await phone.goto(`${base}#guided`);
+await phone.getByRole('heading', { name: 'Room 204' }).waitFor();
+await shot(phone, '14-guided-room', false);
+await phone.getByRole('button', { name: /Use the sample footage/ }).click();
+await phone.getByText(/\d+ items? found/).waitFor({ timeout: 90000 });
+await shot(phone, '15-guided-done', false);
+await phone.getByRole('button', { name: /Next room: Room 112/ }).click();
+await phone.getByRole('heading', { name: 'Room 112' }).waitFor();
+step('guided capture: Room 204 filmed and read, moved on to Room 112');
+const gw = await phone.evaluate(() => ({ doc: document.documentElement.scrollWidth, win: window.innerWidth }));
+step(`guided width check: document ${gw.doc}px, window ${gw.win}px`);
+const exit = phone.getByRole('button', { name: 'Hold to leave guided capture' });
+await exit.hover();
+await phone.mouse.down();
+await phone.waitForTimeout(400);
+await phone.mouse.up();
+const stillGuided = phone.url().endsWith('#guided');
+await exit.hover();
+await phone.mouse.down();
+await phone.waitForTimeout(1800);
+await phone.mouse.up();
+await phone.waitForURL(/#capture/, { timeout: 5000 });
+step(`hold to exit: a short press stays (${stillGuided}), a long hold leaves`);
+
+// The first-run tour, for a reviewer who has not seen it.
+const fresh = await newPage({ width: 1280, height: 900 }, 'chinedu', { tour: true });
+await fresh.goto(`${base}#walks`);
+await fresh.getByRole('dialog').getByText('Every line waits for a person').waitFor({ timeout: 20000 });
+await shot(fresh, '16-tour', false);
+await fresh.getByRole('button', { name: 'Next' }).click();
+await fresh.getByRole('dialog').getByText('Fix what the AI got wrong').waitFor();
+await fresh.getByRole('button', { name: 'Skip' }).click();
+await fresh.getByRole('dialog').waitFor({ state: 'detached' });
+await fresh.reload();
+await fresh.getByRole('heading', { name: 'Monthly walk' }).waitFor();
+const tourAgain = await fresh.getByRole('dialog').count();
+step(`tour shown once for a new reviewer, not again after skipping (${tourAgain === 0})`);
+
+// A buyer's own site: clear the demo, then the setup wizard with a register import.
+await fresh.goto(`${base}#site`);
+await fresh.getByRole('heading', { name: 'Site setup' }).waitFor();
+await shot(fresh, '17-site-setup');
+await fresh.getByRole('button', { name: 'Clear the demo and set up my own site' }).click();
+await fresh.getByRole('button', { name: 'Clear everything' }).click();
+await fresh.getByRole('button', { name: /Set up your own site/ }).waitFor({ timeout: 20000 });
+await shot(fresh, '18-empty');
+await fresh.getByRole('button', { name: /Set up your own site/ }).click();
+await fresh.locator('#setup-site').fill('Victoria Island office');
+await fresh.locator('#setup-you').fill('Folu Oyebanjo');
+await fresh.getByRole('button', { name: 'Next' }).click();
+await fresh.getByRole('button', { name: 'Reception' }).click();
+await fresh.locator('#room-name').fill('Room 112');
+await fresh.locator('#room-floor').fill('Floor 1');
+await fresh.getByRole('button', { name: 'Add', exact: true }).click();
+await shot(fresh, '19-wizard-rooms');
+await fresh.getByRole('button', { name: 'Next' }).click();
+await fresh.locator('#person-name').fill('Ada Obi');
+await fresh.getByRole('button', { name: 'Add', exact: true }).click();
+await fresh.getByRole('button', { name: 'Next' }).click();
+const template = ['Asset ID,Description,Category,Location,Quantity,Cost (NGN),Net book value (NGN),Acquired,Tag code,Serial number', 'FA-0001,"Split air conditioner, 1.5 HP",Split air conditioner,Boardroom,1,"450,000","380,000",12/04/2023,FA-0001,', 'FA-0003,"Laptop, 14-inch",Laptop,Room 112,1,"1,200,000","800,000",15/08/2024,FA-0003,5CD1234XYZ', 'FA-0009,Reception sofa,Sofa,Reception,1,"300,000","250,000",01/02/2024,,'].join('\r\n');
+await fresh.locator('#register-file').setInputFiles({ name: 'register.csv', mimeType: 'text/csv', buffer: Buffer.from(template) });
+await fresh.getByText('register.csv: 3 lines').waitFor();
+await shot(fresh, '20-wizard-register');
+await fresh.getByRole('button', { name: 'Use this register' }).click();
+await fresh.getByRole('button', { name: 'Next' }).click();
+await fresh.getByRole('button', { name: 'Create the site' }).click();
+await fresh.getByRole('heading', { name: 'First walk' }).waitFor({ timeout: 20000 });
+if (await fresh.getByRole('dialog').count()) await fresh.getByRole('button', { name: 'Skip' }).click();
+const siteText = await fresh.locator('.page-head').innerText();
+step(`own site created: ${siteText.split('\n')[0]}`);
+await shot(fresh, '21-own-site');
+await fresh.goto(`${base}#compare`);
+await fresh.getByRole('heading', { name: 'Nothing to compare with yet' }).waitFor();
+step('first walk: comparison explains there is nothing to compare with yet');
 
 console.log(`\nconsole errors: ${errors.length}`);
 for (const e of errors.slice(0, 20)) console.log(`  ${e}`);

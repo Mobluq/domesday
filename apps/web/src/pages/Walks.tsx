@@ -1,7 +1,7 @@
 import { buildWhatsAppSummary } from '@domesday/domain';
 import { useMemo, useState, type ReactElement } from 'react';
 import { recogniseStoredRoom, useJobs, canRecognise } from '../capture/pipeline';
-import { resetDemo } from '../data/actions';
+import { resetDemo, startNextWalk } from '../data/setup';
 import {
   approvedLines,
   comparison,
@@ -19,7 +19,7 @@ import { go } from '../route';
 import { Btn, Chip, Label, Note } from '../ui/bits';
 import { Icon } from '../ui/icons';
 
-const SUMMARY_LINK = 'https://domesday.example/walks/ikeja-branch';
+const SUMMARY_LINK = 'https://domesday.example/walks/site';
 
 function RoomStatus({ status, analysis, refilm }: { status: string; analysis: string; refilm: boolean }): ReactElement {
   if (refilm) return <Chip status="not-seen" quiet>Refilm requested</Chip>;
@@ -39,6 +39,7 @@ export function WalksPage(): ReactElement {
   const jobs = useJobs();
   const [confirmReset, setConfirmReset] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [starting, setStarting] = useState(false);
   const isApproved = current?.walk.status === 'approved';
   const cmp = useMemo(() => (isApproved && site && current && previous ? comparison(site, current, previous) : null), [isApproved, site, current, previous]);
   if (!site || !current) return <main className="page" />;
@@ -55,17 +56,33 @@ export function WalksPage(): ReactElement {
   if (approved) {
     next = {
       title: cmp ? `${plural(cmp.changeCount, 'change', 'changes')} since the walk on ${fmtDate(previous?.walk.startedAt).replace(/ \d{4}$/, '')}` : 'Walk approved',
-      body: `Approved by ${personName(site, current.walk.approvedBy)} on ${fmtDateTime(current.walk.approvedAt)}. The comparison, the reconciliation and the report are ready.`,
+      body: `Approved by ${personName(site, current.walk.approvedBy)} on ${fmtDateTime(current.walk.approvedAt)}. ${previous ? 'The comparison, the reconciliation and the report are ready.' : 'This first walk is the baseline: the next walk is compared against it. The reconciliation and the report are ready.'}`,
       action: (
         <div className="row">
-          <Btn variant="primary" icon="moved" onClick={() => go('compare')}>
-            See what changed
-          </Btn>
+          {previous ? (
+            <Btn variant="primary" icon="moved" onClick={() => go('compare')}>
+              See what changed
+            </Btn>
+          ) : null}
           <Btn icon="books" onClick={() => go('reconcile')}>
             Reconcile with the books
           </Btn>
           <Btn icon="report" onClick={() => go('report')}>
             Report
+          </Btn>
+          <Btn
+            variant="quiet"
+            icon="walk"
+            disabled={starting}
+            onClick={async () => {
+              setStarting(true);
+              const r = await startNextWalk(rt, site, current, personId);
+              setStarting(false);
+              if (!r.ok) say(r.message, 'error');
+              else say('Next walk started. It will be compared against this one.');
+            }}
+          >
+            {starting ? 'Starting…' : 'Start the next walk'}
           </Btn>
         </div>
       ),
@@ -73,11 +90,16 @@ export function WalksPage(): ReactElement {
   } else if (!roomsDone) {
     next = {
       title: progress.filmed === 0 ? 'Film the first room' : `Film the next room: ${progress.notStarted} to go`,
-      body: 'Open this page on your phone and go to Capture. Each room takes a minute: film it, and the lines Claude proposes appear here for review.',
+      body: 'Open this page on your phone and go to Capture. Each room takes a minute: film it, and the lines Claude proposes appear here for review. Guided capture shows one room at a time with big buttons, for whoever does the walk.',
       action: (
-        <Btn variant="primary" icon="record" onClick={() => go('capture')}>
-          Go to capture
-        </Btn>
+        <>
+          <Btn variant="primary" icon="record" onClick={() => go('capture')}>
+            Go to capture
+          </Btn>
+          <Btn icon="phone" onClick={() => go('guided')}>
+            Guided capture
+          </Btn>
+        </>
       ),
     };
   } else if (open > 0) {
@@ -121,7 +143,7 @@ export function WalksPage(): ReactElement {
           <Label>
             {site.name.toUpperCase()} · {site.city.toUpperCase()} · {site.rooms.length} ROOMS
           </Label>
-          <h1 className="display-l">{approved ? 'Walk approved' : started ? 'Walk in progress' : 'Monthly walk'}</h1>
+          <h1 className="display-l">{approved ? 'Walk approved' : started ? 'Walk in progress' : current.walk.label || 'Monthly walk'}</h1>
           <p className="ui-body muted">
             {started
               ? `Started ${fmtDate(started)} at ${fmtTime(started)}${current.walk.capturedBy.length ? ` by ${current.walk.capturedBy.map((p) => personName(site, p)).join(' and ')}` : ''}.`
@@ -236,7 +258,7 @@ export function WalksPage(): ReactElement {
               <span className="ui-body-strong">Walk of {fmtDate(previous.walk.startedAt)}</span>
               <span className="ui-body-s muted">
                 Filmed by {personName(site, previous.walk.capturedBy[0])}, approved by {personName(site, previous.walk.approvedBy)}. {approvedLines(previous).length} approved lines across{' '}
-                {previous.rooms.size} rooms. Demo history.
+                {previous.rooms.size} rooms.{previous.walk.demoHistory ? ' Demo history.' : ''}
               </span>
             </section>
           ) : null}
@@ -254,6 +276,31 @@ export function WalksPage(): ReactElement {
             </section>
           ) : null}
 
+          {(site.cameras ?? []).length ? (
+            <section className="panel panel--tight stack-s" aria-label="Cameras">
+              <Label>CAMERAS</Label>
+              <span className="ui-body-s muted">
+                {plural((site.cameras ?? []).length, 'camera is', 'cameras are')} linked to rooms. A camera check takes one still and shows which recorded items it can see, between walks.
+              </span>
+              <a href="#cameras" className="ui-body-s">
+                Check the cameras
+              </a>
+            </section>
+          ) : null}
+
+          {!site.demo ? (
+            <section className="panel panel--tight stack-s" aria-label="Site setup">
+              <Label>SITE SETUP</Label>
+              <span className="ui-body-s muted">
+                {plural(site.rooms.length, 'room', 'rooms')}, {plural(site.people.length, 'person', 'people')}, {register ? `register of ${plural(register.lines.length, 'line', 'lines')}` : 'no register yet'}.
+              </span>
+              <a href="#site" className="ui-body-s">
+                Change rooms, people or the register
+              </a>
+            </section>
+          ) : null}
+
+          {site.demo ? (
           <section className="panel panel--tight stack-s" aria-label="Demo">
             <Label>DEMO</Label>
             <p className="ui-body-s muted">
@@ -296,6 +343,7 @@ export function WalksPage(): ReactElement {
               </div>
             )}
           </section>
+          ) : null}
 
           <a href="#verify" className="ui-body-s" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <Icon name="verified" size={16} />

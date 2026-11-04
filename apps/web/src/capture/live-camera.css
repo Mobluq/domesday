@@ -1,0 +1,65 @@
+/* The in-app camera (capture/live-camera.tsx). Colours, type and the overlay pieces come from
+   the design system's capture classes (.dms-cam, .dms-cam__*, .dms-region); this file only
+   arranges them over a full-screen viewfinder. */
+
+.live-cam { position: fixed; inset: 0; z-index: 70; outline: none; touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+.live-cam :focus-visible { outline-color: var(--camera-text); }
+.live-cam__sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+
+/* Live labels, drawn where the objects are on the cropped viewfinder */
+.live-cam__regions { position: absolute; inset: 0; pointer-events: none; }
+.live-cam__regions .dms-region { transition: left 260ms cubic-bezier(0.23, 1, 0.32, 1), top 260ms cubic-bezier(0.23, 1, 0.32, 1), width 260ms cubic-bezier(0.23, 1, 0.32, 1), height 260ms cubic-bezier(0.23, 1, 0.32, 1); }
+
+.live-cam__flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; animation: live-cam-flash 240ms ease-out; }
+@keyframes live-cam-flash { from { opacity: 0.85; } }
+
+/* Heads-up layer */
+.live-cam__hud { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 10px; padding: calc(env(safe-area-inset-top, 0px) + 16px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 24px) max(16px, env(safe-area-inset-left, 0px)); pointer-events: none; }
+.live-cam__hud button { pointer-events: auto; }
+.live-cam__top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; min-height: 30px; }
+.live-cam__pill { display: inline-block; background: var(--camera-scrim); padding: 4px 10px; border-radius: var(--radius-full); }
+.live-cam__timer { color: var(--camera-text); padding: 6px 10px; }
+.live-cam__sweep { align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; margin: -7px 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.live-cam__guide { display: flex; justify-content: center; min-height: 46px; margin-top: 14px; }
+.live-cam__spacer { flex: 1 1 auto; }
+
+.live-cam__info { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7); }
+.live-cam__note { margin-bottom: 4px; text-shadow: none; }
+.live-cam__chips { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; max-height: 58px; overflow: hidden; text-shadow: none; }
+.live-cam__chips > li { font: 400 12px/16px var(--font-mono); color: var(--camera-text); background: var(--camera-scrim); padding: 4px 10px; border-radius: var(--radius-full); white-space: nowrap; }
+.live-cam__room { max-width: 100%; overflow-wrap: anywhere; }
+.live-cam__status { color: var(--camera-text); white-space: normal; }
+
+.live-cam__controls { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-top: 14px; }
+.live-cam__controls > :first-child { justify-self: start; }
+.live-cam__controls > :last-child { justify-self: end; }
+.live-cam .dms-cam__btn:active, .live-cam .dms-cam__shutter:active { transform: scale(0.96); }
+.live-cam .dms-cam__btn:disabled, .live-cam .dms-cam__shutter:disabled { opacity: 0.45; cursor: default; transform: none; }
+.live-cam__shot { position: relative; }
+.live-cam__badge { position: absolute; top: -6px; right: -6px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: var(--radius-full); background: var(--camera-chip); color: var(--camera-chip-text); font: 500 12px/22px var(--font-mono); text-align: center; }
+
+/* Short landscape screens: the controls move to a column on the right, as in a camera app */
+@media (orientation: landscape) and (max-height: 540px) {
+  .live-cam__hud { padding-right: calc(max(16px, env(safe-area-inset-right, 0px)) + 96px); gap: 6px; }
+  .live-cam__guide { margin-top: 0; }
+  .live-cam__chips { max-height: 26px; }
+  .live-cam__controls { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 12px); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); right: max(16px, env(safe-area-inset-right, 0px)); margin: 0; grid-template-columns: auto; grid-template-rows: 1fr auto 1fr; justify-items: center; }
+  .live-cam__controls > :first-child { align-self: start; justify-self: center; }
+  .live-cam__controls > :last-child { align-self: end; justify-self: center; }
+}
+
+/* Confirm before throwing a clip away (window.confirm does not work in every runtime) */
+.live-cam__scrim { position: absolute; inset: 0; display: grid; align-items: end; justify-items: center; padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 16px) max(16px, env(safe-area-inset-left, 0px)); background: rgba(0, 0, 0, 0.55); }
+.live-cam__sheet { width: min(420px, 100%); display: flex; flex-direction: column; gap: 8px; padding: 20px; border-radius: var(--radius-m); background: var(--surface-raised); color: var(--text); box-shadow: var(--shadow-popover); user-select: text; -webkit-user-select: text; animation: live-cam-rise 200ms cubic-bezier(0.23, 1, 0.32, 1); }
+.live-cam__sheet :focus-visible { outline-color: var(--focus-ring); }
+.live-cam__sheet h2 { margin: 0; }
+.live-cam__sheet p { margin: 0; color: var(--text-secondary); }
+.live-cam__actions { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.live-cam__actions .dms-btn { width: 100%; }
+@keyframes live-cam-rise { from { transform: translateY(12px); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .live-cam__flash, .live-cam__sheet, .live-cam .dms-cam__guide { animation: none; }
+  .live-cam__regions .dms-region, .live-cam .dms-cam__shutter::after { transition: none; }
+  .live-cam .dms-cam__btn:active, .live-cam .dms-cam__shutter:active { transform: none; }
+}

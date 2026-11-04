@@ -494,6 +494,11 @@ export function ReportPage(): ReactElement {
           <Btn icon="download" onClick={() => void download()} disabled={!latest || changed}>
             Download
           </Btn>
+          {window.self === window.top ? (
+            <Btn icon="report" onClick={() => window.print()}>
+              Print or save as PDF
+            </Btn>
+          ) : null}
         </div>
       </div>
       {!approved ? (

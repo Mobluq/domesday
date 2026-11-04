@@ -22,6 +22,7 @@ import { useData, usePersona, useToast, type WalkBundle } from '../data/store';
 import type { Followup, Line, Site } from '../data/types';
 import { urlFor } from '../runtime/media';
 import { go } from '../route';
+import { CameraHint } from './Cameras';
 import { Btn, Chip, EvidenceFrame, Label, Note, type ChipStatus } from '../ui/bits';
 import { Icon, type IconName } from '../ui/icons';
 
@@ -128,7 +129,38 @@ export function ComparisonPage(): ReactElement {
   const result = useMemo(() => (site && current && previous ? comparison(site, current, previous) : null), [site, current, previous]);
   const recon = useMemo(() => (site && current ? reconciliation(site, register, current) : null), [site, register, current]);
 
-  if (!site || !current || !previous || !result) return <main className="page" />;
+  if (!site || !current) return <main className="page" />;
+  if (!previous || !result) {
+    const approvedNow = current.walk.status === 'approved';
+    return (
+      <main className="page page--narrow">
+        <div className="stack-l" style={{ paddingBlock: '40px' }}>
+          <Label>COMPARISON · {site.name.toUpperCase()}</Label>
+          <h1 className="display-m" style={{ margin: 0 }}>
+            Nothing to compare with yet
+          </h1>
+          <p className="ui-body muted" style={{ margin: 0 }}>
+            This is the first walk at {site.name}. Once it's approved it becomes the baseline, and the next walk shows what's new, what moved, what got worse and what wasn't seen
+            since.
+          </p>
+          <div className="row">
+            {approvedNow ? (
+              <Btn variant="primary" icon="books" onClick={() => go('reconcile')}>
+                Reconcile with the books
+              </Btn>
+            ) : (
+              <Btn variant="primary" icon="found" onClick={() => go(current.lines.length ? 'review' : 'capture')}>
+                {current.lines.length ? 'Review this walk' : 'Film the first room'}
+              </Btn>
+            )}
+            <Btn icon="report" onClick={() => go('report')}>
+              Report
+            </Btn>
+          </div>
+        </div>
+      </main>
+    );
+  }
   const approved = current.walk.status === 'approved';
   const before = new Map(previous.lines.map((l) => [l.id, l]));
   const after = new Map(current.lines.map((l) => [l.id, l]));
@@ -198,10 +230,14 @@ export function ComparisonPage(): ReactElement {
             ) : null}
           </>
         );
+        const camHint = <CameraHint roomId={line.roomId} registerId={b?.registerId ?? null} lineId={b?.id ?? null} />;
         actions = inv ? (
-          <span className="ui-body-s">
-            <Icon name="investigate" size={16} style={{ verticalAlign: '-3px' }} /> Investigation open · {personName(site, inv.owner)} · due {fmtDayMonth(inv.due ? `${inv.due}T12:00:00+01:00` : null)}
-          </span>
+          <>
+            <span className="ui-body-s">
+              <Icon name="investigate" size={16} style={{ verticalAlign: '-3px' }} /> Investigation open · {personName(site, inv.owner)} · due {fmtDayMonth(inv.due ? `${inv.due}T12:00:00+01:00` : null)}
+            </span>
+            {camHint}
+          </>
         ) : investigating === key ? (
           <InvestigateForm
             site={site}
@@ -213,9 +249,12 @@ export function ComparisonPage(): ReactElement {
             }}
           />
         ) : (
-          <Btn icon="investigate" onClick={() => setInvestigating(key)}>
-            Investigate
-          </Btn>
+          <>
+            <Btn icon="investigate" onClick={() => setInvestigating(key)}>
+              Investigate
+            </Btn>
+            {camHint}
+          </>
         );
         break;
       }

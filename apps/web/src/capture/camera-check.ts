@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { newId } from '../data/actions';
-import { approvedLines, categoryName, nowIso } from '../data/derive';
+import { approvedLines, categoryName, comparison, nowIso } from '../data/derive';
 import type { AppData } from '../data/store';
 import type { Box, CameraCheck, CameraDef, PersonId, Sighting, Site } from '../data/types';
 import { storeImage } from '../runtime/media';
@@ -37,6 +37,17 @@ export function expectedFor(data: AppData, roomId: string): Expected[] {
   for (const l of approvedLines(source).filter((x) => x.roomId === roomId)) {
     if (l.registerId) seenRegister.add(l.registerId);
     out.push({ ref: '', lineId: l.id, registerId: l.registerId ?? null, categoryId: l.categoryId, description: `${l.kind === 'counted_group' ? `${l.quantity} × ` : ''}${l.description}` });
+  }
+  // After approval, what the last walk had and this one didn't is worth looking for too.
+  if (source === current && current && previous) {
+    const cmp = comparison(site, current, previous);
+    for (const c of cmp.items) {
+      if (c.status !== 'not_seen' || !c.beforeLineId) continue;
+      const l = previous.lines.find((x) => x.id === c.beforeLineId);
+      if (!l || l.roomId !== roomId) continue;
+      if (l.registerId) seenRegister.add(l.registerId);
+      out.push({ ref: '', lineId: l.id, registerId: l.registerId ?? null, categoryId: l.categoryId, description: `${l.description} (not seen on the last walk)` });
+    }
   }
   for (const r of register?.lines ?? []) {
     if (r.roomId !== roomId || seenRegister.has(r.registerId)) continue;

@@ -10,9 +10,12 @@ export const VIEWS = [
   { id: 'report', label: 'Report' },
 ] as const;
 
-export type ViewId = (typeof VIEWS)[number]['id'] | 'verify';
+/** Views reached from menus and buttons rather than the main bar. ("settings" is reserved by claude.ai, hence "site".) */
+const OTHER_VIEWS = ['verify', 'site', 'cameras', 'guided'] as const;
 
-const IDS = new Set<string>([...VIEWS.map((v) => v.id), 'verify']);
+export type ViewId = (typeof VIEWS)[number]['id'] | (typeof OTHER_VIEWS)[number];
+
+const IDS = new Set<string>([...VIEWS.map((v) => v.id), ...OTHER_VIEWS]);
 
 function read(): ViewId {
   const h = window.location.hash.replace(/^#/, '');

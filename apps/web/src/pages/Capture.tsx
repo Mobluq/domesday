@@ -1,5 +1,6 @@
 import { UI_COPY } from '@domesday/domain';
 import { useEffect, useRef, useState, type ChangeEvent, type ReactElement } from 'react';
+import { cameraAvailable, LiveCamera } from '../capture/live-camera';
 import { clearJob, jobKey, processRoom, recogniseStoredRoom, stopJob, useJobs, canRecognise, type Job, type StepId } from '../capture/pipeline';
 import { addRoom, skipRoom, unskipRoom } from '../data/actions';
 import { duration, fmtDate, fmtDayMonth, fmtTime, megabytes, personName, plural, timecode, walkProgress } from '../data/derive';
@@ -343,7 +344,18 @@ function RoomScreen({ room, onBack, onNext }: { room: RoomDef; onBack: () => voi
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [refilm, setRefilm] = useState(false);
+  const [live, setLive] = useState(false);
+  const [canFilm, setCanFilm] = useState(false);
   const labelInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    let on = true;
+    void cameraAvailable().then((a) => {
+      if (on) setCanFilm(a === 'ok');
+    });
+    return () => {
+      on = false;
+    };
+  }, []);
   if (!site || !current) return <div />;
   const key = jobKey(current.walk.id, room.id);
   const job = jobs.find((j) => j.key === key);
@@ -438,18 +450,47 @@ function RoomScreen({ room, onBack, onNext }: { room: RoomDef; onBack: () => voi
             </div>
           </div>
 
+          {live ? (
+            <LiveCamera
+              roomName={room.name}
+              expectedSeconds={room.sample?.seconds ?? 60}
+              onCancel={() => setLive(false)}
+              onFallback={(why) => {
+                setLive(false);
+                setCanFilm(false);
+                say(`${why} Use your phone's camera instead.`, 'error');
+              }}
+              onDone={(r) => {
+                setLive(false);
+                void start(r.clip, r.fileName, 'camera', r.startedAt, r.labelShots);
+              }}
+            />
+          ) : null}
           <div className="big-choices">
-            <label className="choice choice--primary">
-              <span className="choice__icon">
-                <Icon name="camera" />
-              </span>
-              <span className="stack-xs">
-                <span className="ui-body-strong">Record the room</span>
-                <span className="ui-body-s muted">Opens your camera. Stop when both sweeps are done.</span>
-              </span>
-              <Icon name="next" />
-              <input id={`rec-${room.id}`} type="file" accept="video/*" capture="environment" onChange={onVideo('camera')} aria-label={`Record ${room.name}`} />
-            </label>
+            {canFilm ? (
+              <button type="button" className="choice choice--primary" onClick={() => setLive(true)}>
+                <span className="choice__icon">
+                  <Icon name="camera" />
+                </span>
+                <span className="stack-xs">
+                  <span className="ui-body-strong">Record the room</span>
+                  <span className="ui-body-s muted">Films in the app, with live labels on what it spots. Stop when both sweeps are done.</span>
+                </span>
+                <Icon name="next" />
+              </button>
+            ) : (
+              <label className="choice choice--primary">
+                <span className="choice__icon">
+                  <Icon name="camera" />
+                </span>
+                <span className="stack-xs">
+                  <span className="ui-body-strong">Record the room</span>
+                  <span className="ui-body-s muted">Opens your camera. Stop when both sweeps are done.</span>
+                </span>
+                <Icon name="next" />
+                <input id={`rec-${room.id}`} type="file" accept="video/*" capture="environment" onChange={onVideo('camera')} aria-label={`Record ${room.name}`} />
+              </label>
+            )}
             <label className="choice">
               <span className="choice__icon">
                 <Icon name="clip" />

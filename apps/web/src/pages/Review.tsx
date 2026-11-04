@@ -5,6 +5,7 @@ import {
   acceptLine,
   approveWalk,
   approverCheck,
+  canLabel,
   editLine,
   mergeLines,
   rejectLine,
@@ -39,6 +40,7 @@ import type { Line, Reading, Site } from '../data/types';
 import { urlFor } from '../runtime/media';
 import { go } from '../route';
 import { Bar, Btn, Cond, Conf, EvidenceFrame, Fingerprint, Label, LineNo, Note, Prov, type Region } from '../ui/bits';
+import { FixBoxDialog, MissedItemDialog } from '../ui/label-dialogs';
 import { Icon } from '../ui/icons';
 
 type Mode = 'view' | 'edit' | 'reject' | 'merge' | 'split';
@@ -84,7 +86,9 @@ function LineCard({
   const { personId } = usePersona();
   const frames = useMemo(() => framesOf(bundle), [bundle]);
   const [zoom, setZoom] = useState<{ src: string; alt: string; regions: Region[]; w: number; h: number; tc?: string } | null>(null);
+  const [fixing, setFixing] = useState(false);
   if (!site) return <div />;
+  const labeller = canLabel(site, personId) && bundle.walk.id === site.currentWalkId && bundle.walk.status !== 'approved' && (line.status === 'proposed' || line.status === 'accepted');
   const no = lineNo(bundle, line.id);
   const room = site.rooms.find((r) => r.id === line.roomId);
   const visit = bundle.rooms.get(line.roomId);
@@ -258,6 +262,16 @@ function LineCard({
           </span>
         </div>
       ) : null}
+
+      {mode === 'view' && labeller ? (
+        <div className="row">
+          <Btn variant="quiet" icon="edit" onClick={() => setFixing(true)}>
+            Redraw the box
+          </Btn>
+          <span className="ui-body-s muted">If the box is on the wrong thing. Use Edit to relabel what it is.</span>
+        </div>
+      ) : null}
+      {fixing ? <FixBoxDialog bundle={bundle} line={line} onClose={() => setFixing(false)} /> : null}
 
       {line.history.length > 1 || line.decision ? (
         <details>
@@ -577,6 +591,7 @@ export function ReviewPage(): ReactElement {
   const [grid, setGrid] = useState(false);
   const [refilm, setRefilm] = useState<string | null>(null);
   const [refilmReason, setRefilmReason] = useState('');
+  const [labelMissed, setLabelMissed] = useState(false);
 
   const lines = bundle?.lines ?? [];
   const visibleLines = lines.filter((l) => l.status !== 'merged' && l.status !== 'split');
@@ -707,6 +722,11 @@ export function ReviewPage(): ReactElement {
           {!isPrevious && !approved ? (
             <>
               <span className="ui-body-s muted">{open ? `${plural(open, 'line still needs', 'lines still need')} a decision` : visibleLines.length ? 'Every line has a decision' : ''}</span>
+              {canLabel(site, personId) && visibleLines.length ? (
+                <Btn onClick={() => setLabelMissed(true)} icon="label-shot">
+                  Label a missed item
+                </Btn>
+              ) : null}
               {line ? (
                 <Btn onClick={() => setRefilm(line.roomId)} icon="refresh">
                   Request refilm
@@ -916,6 +936,7 @@ export function ReviewPage(): ReactElement {
         </div>
       )}
 
+      {labelMissed ? <MissedItemDialog bundle={bundle} initialRoomId={line?.roomId ?? null} onClose={() => setLabelMissed(false)} /> : null}
       {refilm ? (
         <div className="dialog-backdrop" role="dialog" aria-modal="true" aria-label="Request a refilm">
           <form

@@ -20,9 +20,11 @@
     "@domesday/tokens": "workspace:*",
     "@noble/hashes": "1.8.0",
     "@tensorflow-models/coco-ssd": "2.2.3",
+    "@tensorflow/tfjs-backend-cpu": "4.22.0",
     "@tensorflow/tfjs-backend-webgl": "4.22.0",
     "@tensorflow/tfjs-converter": "4.22.0",
     "@tensorflow/tfjs-core": "4.22.0",
+    "ioredis": "5.4.1",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
