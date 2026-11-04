@@ -20,3 +20,6 @@ __pycache__/
 .expo/
 apps/capture/android/
 apps/capture/ios/
+
+# Artifact build output (apps/web/scripts/artifact.mjs)
+dist-artifact/

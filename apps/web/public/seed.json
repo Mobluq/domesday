@@ -1,0 +1,1970 @@
+{
+ "version": 1,
+ "currentWalkId": "w-current",
+ "previousWalkId": "w-2026-10-03",
+ "docs": {
+  "site/main": {
+   "id": "ikeja",
+   "name": "Ikeja branch",
+   "city": "Lagos",
+   "currency": "NGN",
+   "thresholdKobo": 10000000,
+   "separationRule": true,
+   "rooms": [
+    {
+     "id": "r-204",
+     "name": "Room 204",
+     "floor": "Floor 2",
+     "note": "Guest twin room",
+     "sample": {
+      "video": "media/samples/room-204.mp4",
+      "webm": "media/samples/room-204.webm",
+      "poster": "media/samples/room-204.jpg",
+      "labelShots": [],
+      "seconds": 17.3
+     }
+    },
+    {
+     "id": "r-112",
+     "name": "Room 112",
+     "floor": "Floor 1",
+     "note": "Office",
+     "sample": {
+      "video": "media/samples/room-112.mp4",
+      "webm": "media/samples/room-112.webm",
+      "poster": "media/samples/room-112.jpg",
+      "labelShots": [
+       "media/samples/room-112-label.jpg"
+      ],
+      "seconds": 8
+     }
+    },
+    {
+     "id": "boardroom",
+     "name": "Boardroom",
+     "floor": "Floor 1",
+     "note": "Meeting room",
+     "sample": {
+      "video": "media/samples/boardroom.mp4",
+      "webm": "media/samples/boardroom.webm",
+      "poster": "media/samples/boardroom.jpg",
+      "labelShots": [],
+      "seconds": 7.4
+     }
+    },
+    {
+     "id": "training",
+     "name": "Training room",
+     "floor": "Floor 1",
+     "note": "Classroom layout",
+     "sample": {
+      "video": "media/samples/training-room.mp4",
+      "webm": "media/samples/training-room.webm",
+      "poster": "media/samples/training-room.jpg",
+      "labelShots": [],
+      "seconds": 6.2
+     }
+    },
+    {
+     "id": "corridor-2",
+     "name": "Corridor 2",
+     "floor": "Floor 2",
+     "note": "Fire point by the stairs",
+     "sample": {
+      "video": "media/samples/corridor-2.mp4",
+      "webm": "media/samples/corridor-2.webm",
+      "poster": "media/samples/corridor-2.jpg",
+      "labelShots": [],
+      "seconds": 6.2
+     }
+    },
+    {
+     "id": "plant",
+     "name": "Plant room",
+     "floor": "Ground floor",
+     "note": "Generator and inverter",
+     "sample": {
+      "video": "media/samples/plant-room.mp4",
+      "webm": "media/samples/plant-room.webm",
+      "poster": "media/samples/plant-room.jpg",
+      "labelShots": [],
+      "seconds": 5
+     }
+    },
+    {
+     "id": "store-b",
+     "name": "Store room B",
+     "floor": "Floor 2",
+     "note": "Usually locked",
+     "sample": null
+    }
+   ],
+   "people": [
+    {
+     "id": "tolu",
+     "name": "Tolu Adeyemi",
+     "initials": "TA",
+     "role": "site_manager",
+     "roleLabel": "Site manager",
+     "duty": "Films the walks"
+    },
+    {
+     "id": "chinedu",
+     "name": "Chinedu Okafor",
+     "initials": "CO",
+     "role": "reviewer",
+     "roleLabel": "Reviewer",
+     "duty": "Reviews and approves"
+    },
+    {
+     "id": "ifeoma",
+     "name": "Ifeoma Nwosu",
+     "initials": "IN",
+     "role": "financial_controller",
+     "roleLabel": "Financial controller",
+     "duty": "Reconciles and issues reports"
+    }
+   ],
+   "categories": [
+    {
+     "id": "television",
+     "name": "Television",
+     "plural": "televisions"
+    },
+    {
+     "id": "bed",
+     "name": "Bed",
+     "plural": "beds"
+    },
+    {
+     "id": "armchair",
+     "name": "Armchair",
+     "plural": "armchairs"
+    },
+    {
+     "id": "sofa",
+     "name": "Sofa",
+     "plural": "sofas"
+    },
+    {
+     "id": "framed-art",
+     "name": "Framed print or artwork",
+     "plural": "framed prints"
+    },
+    {
+     "id": "floor-lamp",
+     "name": "Floor lamp",
+     "plural": "floor lamps"
+    },
+    {
+     "id": "table-lamp",
+     "name": "Table or bedside lamp",
+     "plural": "lamps"
+    },
+    {
+     "id": "side-table",
+     "name": "Side or bedside table",
+     "plural": "side tables"
+    },
+    {
+     "id": "wardrobe",
+     "name": "Wardrobe",
+     "plural": "wardrobes"
+    },
+    {
+     "id": "mirror",
+     "name": "Mirror",
+     "plural": "mirrors"
+    },
+    {
+     "id": "rug",
+     "name": "Rug",
+     "plural": "rugs"
+    },
+    {
+     "id": "mini-fridge",
+     "name": "Mini fridge",
+     "plural": "mini fridges"
+    },
+    {
+     "id": "refrigerator",
+     "name": "Refrigerator",
+     "plural": "refrigerators"
+    },
+    {
+     "id": "split-ac",
+     "name": "Split air conditioner",
+     "plural": "air conditioners"
+    },
+    {
+     "id": "standing-fan",
+     "name": "Standing fan",
+     "plural": "standing fans"
+    },
+    {
+     "id": "ceiling-fan",
+     "name": "Ceiling fan",
+     "plural": "ceiling fans"
+    },
+    {
+     "id": "meeting-table",
+     "name": "Meeting or conference table",
+     "plural": "meeting tables"
+    },
+    {
+     "id": "desk",
+     "name": "Desk",
+     "plural": "desks"
+    },
+    {
+     "id": "student-desk",
+     "name": "Student or training desk",
+     "plural": "student desks"
+    },
+    {
+     "id": "office-chair",
+     "name": "Office chair",
+     "plural": "office chairs"
+    },
+    {
+     "id": "stacking-chair",
+     "name": "Stacking or training chair",
+     "plural": "chairs"
+    },
+    {
+     "id": "chalkboard",
+     "name": "Chalkboard or whiteboard",
+     "plural": "boards"
+    },
+    {
+     "id": "projector",
+     "name": "Projector",
+     "plural": "projectors"
+    },
+    {
+     "id": "projector-screen",
+     "name": "Projector screen",
+     "plural": "projector screens"
+    },
+    {
+     "id": "laptop",
+     "name": "Laptop",
+     "plural": "laptops"
+    },
+    {
+     "id": "desktop-computer",
+     "name": "Desktop computer",
+     "plural": "desktop computers"
+    },
+    {
+     "id": "monitor",
+     "name": "Computer monitor",
+     "plural": "monitors"
+    },
+    {
+     "id": "printer",
+     "name": "Printer",
+     "plural": "printers"
+    },
+    {
+     "id": "telephone",
+     "name": "Telephone",
+     "plural": "telephones"
+    },
+    {
+     "id": "safe",
+     "name": "Safe",
+     "plural": "safes"
+    },
+    {
+     "id": "water-dispenser",
+     "name": "Water dispenser",
+     "plural": "water dispensers"
+    },
+    {
+     "id": "microwave",
+     "name": "Microwave",
+     "plural": "microwaves"
+    },
+    {
+     "id": "fire-extinguisher",
+     "name": "Fire extinguisher",
+     "plural": "fire extinguishers"
+    },
+    {
+     "id": "generator",
+     "name": "Generator",
+     "plural": "generators"
+    },
+    {
+     "id": "inverter",
+     "name": "Inverter",
+     "plural": "inverters"
+    },
+    {
+     "id": "solar-battery",
+     "name": "Solar battery",
+     "plural": "solar batteries"
+    },
+    {
+     "id": "cctv-camera",
+     "name": "CCTV camera",
+     "plural": "CCTV cameras"
+    },
+    {
+     "id": "network-equipment",
+     "name": "Router, switch or access point",
+     "plural": "network devices"
+    },
+    {
+     "id": "filing-cabinet",
+     "name": "Filing cabinet or cupboard",
+     "plural": "cabinets"
+    },
+    {
+     "id": "shelving",
+     "name": "Shelving",
+     "plural": "shelving units"
+    },
+    {
+     "id": "other",
+     "name": "Other asset",
+     "plural": "other assets"
+    }
+   ],
+   "currentWalkId": "w-current",
+   "previousWalkId": "w-2026-10-03",
+   "registerImportedAt": "2026-10-28",
+   "demo": true,
+   "cameras": [
+    {
+     "id": "cam-01",
+     "name": "CAM 01",
+     "roomId": "boardroom",
+     "brand": "IP camera on the NVR, channel 1",
+     "connection": "gateway",
+     "schedule": "nightly",
+     "sampleStill": "media/cctv/cam-01-boardroom.jpg"
+    },
+    {
+     "id": "cam-02",
+     "name": "CAM 02",
+     "roomId": "plant",
+     "brand": "IP camera on the NVR, channel 2",
+     "connection": "gateway",
+     "schedule": "nightly",
+     "sampleStill": "media/cctv/cam-02-plant-room.jpg"
+    },
+    {
+     "id": "cam-03",
+     "name": "CAM 03",
+     "roomId": "training",
+     "brand": "IP camera on the NVR, channel 3",
+     "connection": "gateway",
+     "schedule": "nightly",
+     "sampleStill": "media/cctv/cam-03-training-room.jpg"
+    }
+   ]
+  },
+  "register/main": {
+   "importedAt": "2026-10-28T11:20:00+01:00",
+   "importedBy": "ifeoma",
+   "fileName": "fixed-asset-register-ikeja-2026-10-28.csv",
+   "lines": [
+    {
+     "registerId": "FA-1043",
+     "description": "Television, Sony 43-inch",
+     "categoryId": "television",
+     "roomId": "r-204",
+     "locationLabel": "Room 204",
+     "quantity": 1,
+     "costKobo": 45000000,
+     "bookValueKobo": 38000000,
+     "acquired": "2023-04-12",
+     "tagCode": null,
+     "serial": null
+    },
+    {
+     "registerId": "FA-1075",
+     "description": "Bed, king size",
+     "categoryId": "bed",
+     "roomId": "r-204",
+     "locationLabel": "Room 204",
+     "quantity": 1,
+     "costKobo": 42000000,
+     "bookValueKobo": 31000000,
+     "acquired": "2022-11-02",
+     "tagCode": null,
+     "serial": null
+    },
+    {
+     "registerId": "FA-1078",
+     "description": "Armchair, upholstered",
+     "categoryId": "armchair",
+     "roomId": "r-204",
+     "locationLabel": "Room 204",
+     "quantity": 1,
+     "costKobo": 19000000,
+     "bookValueKobo": 14500000,
+     "acquired": "2022-11-02",
+     "tagCode": null,
+     "serial": null
+    },
+    {
+     "registerId": "FA-1081",
+     "description": "Framed print",
+     "categoryId": "framed-art",
+     "roomId": "r-204",
+     "locationLabel": "Room 204",
+     "quantity": 1,
+     "costKobo": 5200000,
+     "bookValueKobo": 3800000,
+     "acquired": "2022-11-02",
+     "tagCode": null,
+     "serial": null
+    },
+    {
+     "registerId": "FA-1102",
+     "description": "Bedside lamps (2)",
+     "categoryId": "table-lamp",
+     "roomId": "r-204",
+     "locationLabel": "Room 204",
+     "quantity": 2,
+     "costKobo": 6400000,
+     "bookValueKobo": 4800000,
+     "acquired": "2022-11-02",
+     "tagCode": null,
+     "serial": null
+    },
+    {
+     "registerId": "FA-0450",
+     "description": "Split air conditioner, LG 1.5 HP",
+     "categoryId": "split-ac",
+     "roomId": "r-112",
+     "locationLabel": "Room 112",
+     "quantity": 1,
+     "costKobo": 56000000,
+     "bookValueKobo": 42000000,
+     "acquired": "2023-01-20",
+     "tagCode": null,
+     "serial": "310KAP0X2181"
+    },
+    {
+     "registerId": "FA-0391",
+     "description": "Laptop, HP ProBook 450",
+     "categoryId": "laptop",
+     "roomId": "r-112",
+     "locationLabel": "Room 112",
+     "quantity": 1,
+     "costKobo": 98000000,
+     "bookValueKobo": 62000000,
+     "acquired": "2023-06-05",
+     "tagCode": null,
+     "serial": "5CD2149XQ7"
+    },
+    {
+     "registerId": "FA-0301",
+     "description": "Meeting table, 8-seater",
+     "categoryId": "meeting-table",
+     "roomId": "boardroom",
+     "locationLabel": "Boardroom",
+     "quantity": 1,
+     "costKobo": 34000000,
+     "bookValueKobo": 26000000,
+     "acquired": "2022-08-15",
+     "tagCode": null,
+     "serial": null
+    },
+    {
+     "registerId": "FA-0310",
+     "description": "Office chairs, mesh (2)",
+     "categoryId": "office-chair",
+     "roomId": "boardroom",
+     "locationLabel": "Boardroom",
+     "quantity": 2,
+     "costKobo": 18000000,
+     "bookValueKobo": 13000000,
+     "acquired": "2022-08-15",
+     "tagCode": null,
+     "serial": null
+    },
+    {
+     "registerId": "FA-0412",
+     "description": "Projector, Epson EB-X49",
+     "categoryId": "projector",
+     "roomId": "training",
+     "locationLabel": "Training room",
+     "quantity": 1,
+     "costKobo": 72000000,
+     "bookValueKobo": 54000000,
+     "acquired": "2023-02-27",
+     "tagCode": "FA-0412",
+     "serial": "X7D20488"
+    },
+    {
+     "registerId": "FA-0877",
+     "description": "Training chairs (32)",
+     "categoryId": "stacking-chair",
+     "roomId": "training",
+     "locationLabel": "Training room",
+     "quantity": 32,
+     "costKobo": 144000000,
+     "bookValueKobo": 112000000,
+     "acquired": "2022-05-09",
+     "tagCode": null,
+     "serial": null
+    },
+    {
+     "registerId": "FA-0880",
+     "description": "Student desks (16)",
+     "categoryId": "student-desk",
+     "roomId": "training",
+     "locationLabel": "Training room",
+     "quantity": 16,
+     "costKobo": 128000000,
+     "bookValueKobo": 96000000,
+     "acquired": "2022-05-09",
+     "tagCode": null,
+     "serial": null
+    },
+    {
+     "registerId": "FA-0890",
+     "description": "Chalkboard",
+     "categoryId": "chalkboard",
+     "roomId": "training",
+     "locationLabel": "Training room",
+     "quantity": 1,
+     "costKobo": 9500000,
+     "bookValueKobo": 7500000,
+     "acquired": "2022-05-09",
+     "tagCode": null,
+     "serial": null
+    },
+    {
+     "registerId": "FA-0233",
+     "description": "Fire extinguisher, 9 kg dry powder",
+     "categoryId": "fire-extinguisher",
+     "roomId": "corridor-2",
+     "locationLabel": "Corridor 2",
+     "quantity": 1,
+     "costKobo": 4800000,
+     "bookValueKobo": 4200000,
+     "acquired": "2024-03-01",
+     "tagCode": null,
+     "serial": null
+    },
+    {
+     "registerId": "FA-0101",
+     "description": "Generator, 7.5 kVA petrol",
+     "categoryId": "generator",
+     "roomId": "plant",
+     "locationLabel": "Plant room",
+     "quantity": 1,
+     "costKobo": 190000000,
+     "bookValueKobo": 135000000,
+     "acquired": "2021-12-10",
+     "tagCode": null,
+     "serial": null
+    },
+    {
+     "registerId": "FA-0105",
+     "description": "Inverter, 5 kVA",
+     "categoryId": "inverter",
+     "roomId": "plant",
+     "locationLabel": "Plant room",
+     "quantity": 1,
+     "costKobo": 115000000,
+     "bookValueKobo": 85000000,
+     "acquired": "2023-09-18",
+     "tagCode": null,
+     "serial": null
+    },
+    {
+     "registerId": "FA-0106",
+     "description": "Solar batteries, 200 Ah (4)",
+     "categoryId": "solar-battery",
+     "roomId": "plant",
+     "locationLabel": "Plant room",
+     "quantity": 4,
+     "costKobo": 200000000,
+     "bookValueKobo": 160000000,
+     "acquired": "2023-09-18",
+     "tagCode": null,
+     "serial": null
+    },
+    {
+     "registerId": "FA-0601",
+     "description": "Water dispenser",
+     "categoryId": "water-dispenser",
+     "roomId": "store-b",
+     "locationLabel": "Store room B",
+     "quantity": 1,
+     "costKobo": 12500000,
+     "bookValueKobo": 9500000,
+     "acquired": "2022-03-03",
+     "tagCode": null,
+     "serial": null
+    },
+    {
+     "registerId": "FA-0602",
+     "description": "Mini fridge",
+     "categoryId": "mini-fridge",
+     "roomId": "store-b",
+     "locationLabel": "Store room B",
+     "quantity": 1,
+     "costKobo": 17000000,
+     "bookValueKobo": 13500000,
+     "acquired": "2022-03-03",
+     "tagCode": null,
+     "serial": null
+    },
+    {
+     "registerId": "FA-0603",
+     "description": "Standing fans (3)",
+     "categoryId": "standing-fan",
+     "roomId": "store-b",
+     "locationLabel": "Store room B",
+     "quantity": 3,
+     "costKobo": 9000000,
+     "bookValueKobo": 6600000,
+     "acquired": "2022-03-03",
+     "tagCode": null,
+     "serial": null
+    },
+    {
+     "registerId": "FA-0604",
+     "description": "Office chairs, spare (4)",
+     "categoryId": "office-chair",
+     "roomId": "store-b",
+     "locationLabel": "Store room B",
+     "quantity": 4,
+     "costKobo": 32000000,
+     "bookValueKobo": 24000000,
+     "acquired": "2022-08-15",
+     "tagCode": null,
+     "serial": null
+    },
+    {
+     "registerId": "FA-0605",
+     "description": "Printer, laser",
+     "categoryId": "printer",
+     "roomId": "store-b",
+     "locationLabel": "Store room B",
+     "quantity": 1,
+     "costKobo": 24000000,
+     "bookValueKobo": 18000000,
+     "acquired": "2023-03-14",
+     "tagCode": null,
+     "serial": null
+    },
+    {
+     "registerId": "FA-0606",
+     "description": "Safe, digital",
+     "categoryId": "safe",
+     "roomId": "store-b",
+     "locationLabel": "Store room B",
+     "quantity": 1,
+     "costKobo": 15000000,
+     "bookValueKobo": 11000000,
+     "acquired": "2022-03-03",
+     "tagCode": null,
+     "serial": null
+    }
+   ]
+  },
+  "walks/w-2026-10-03": {
+   "id": "w-2026-10-03",
+   "siteId": "ikeja",
+   "label": "Monthly walk",
+   "status": "approved",
+   "startedAt": "2026-10-03T09:58:00+01:00",
+   "finishedAt": "2026-10-03T10:41:00+01:00",
+   "capturedBy": [
+    "tolu"
+   ],
+   "approvedAt": "2026-10-03T15:20:00+01:00",
+   "approvedBy": "chinedu",
+   "previousWalkId": null,
+   "demoHistory": true,
+   "events": []
+  },
+  "walks/w-2026-10-03/rooms/r-204": {
+   "roomId": "r-204",
+   "status": "filmed",
+   "skipReason": null,
+   "filmedBy": "tolu",
+   "filmedAt": "2026-10-03T09:58:00+01:00",
+   "clip": null,
+   "frames": [
+    {
+     "id": "f-tv",
+     "ref": {
+      "kind": "file",
+      "path": "media/walk-2026-10-03/television.jpg"
+     },
+     "t": 51.2,
+     "w": 960,
+     "h": 720
+    },
+    {
+     "id": "f-bed",
+     "ref": {
+      "kind": "file",
+      "path": "media/walk-2026-10-03/bed.jpg"
+     },
+     "t": 12.4,
+     "w": 960,
+     "h": 720
+    },
+    {
+     "id": "f-armchair",
+     "ref": {
+      "kind": "file",
+      "path": "media/walk-2026-10-03/armchair.jpg"
+     },
+     "t": 22,
+     "w": 960,
+     "h": 720
+    },
+    {
+     "id": "f-print",
+     "ref": {
+      "kind": "file",
+      "path": "media/walk-2026-10-03/framed-print.jpg"
+     },
+     "t": 30.6,
+     "w": 960,
+     "h": 720
+    },
+    {
+     "id": "f-lamps",
+     "ref": {
+      "kind": "file",
+      "path": "media/walk-2026-10-03/bedside-lamps.jpg"
+     },
+     "t": 41.8,
+     "w": 960,
+     "h": 720
+    }
+   ],
+   "labelShots": [],
+   "analysis": {
+    "status": "done",
+    "note": "Demo history: the clip itself is not included."
+   },
+   "updatedAt": "2026-10-03T09:58:00+01:00"
+  },
+  "walks/w-2026-10-03/rooms/r-112": {
+   "roomId": "r-112",
+   "status": "filmed",
+   "skipReason": null,
+   "filmedBy": "tolu",
+   "filmedAt": "2026-10-03T10:06:00+01:00",
+   "clip": null,
+   "frames": [
+    {
+     "id": "f-ac",
+     "ref": {
+      "kind": "file",
+      "path": "media/walk-2026-10-03/air-conditioner.jpg"
+     },
+     "t": 11.8,
+     "w": 960,
+     "h": 720
+    },
+    {
+     "id": "f-badge",
+     "ref": {
+      "kind": "file",
+      "path": "media/walk-2026-10-03/ac-badge.jpg"
+     },
+     "t": 13,
+     "w": 960,
+     "h": 720
+    }
+   ],
+   "labelShots": [
+    {
+     "id": "l-ac",
+     "ref": {
+      "kind": "file",
+      "path": "media/walk-2026-10-03/ac-label.jpg"
+     },
+     "t": null,
+     "w": 960,
+     "h": 720,
+     "label": true
+    }
+   ],
+   "analysis": {
+    "status": "done",
+    "note": "Demo history: the clip itself is not included."
+   },
+   "updatedAt": "2026-10-03T10:06:00+01:00"
+  },
+  "walks/w-2026-10-03/rooms/boardroom": {
+   "roomId": "boardroom",
+   "status": "filmed",
+   "skipReason": null,
+   "filmedBy": "tolu",
+   "filmedAt": "2026-10-03T10:12:00+01:00",
+   "clip": null,
+   "frames": [
+    {
+     "id": "f-meeting",
+     "ref": {
+      "kind": "file",
+      "path": "media/walk-2026-10-03/meeting-room.jpg"
+     },
+     "t": 6.4,
+     "w": 960,
+     "h": 720
+    }
+   ],
+   "labelShots": [],
+   "analysis": {
+    "status": "done",
+    "note": "Demo history: the clip itself is not included."
+   },
+   "updatedAt": "2026-10-03T10:12:00+01:00"
+  },
+  "walks/w-2026-10-03/rooms/training": {
+   "roomId": "training",
+   "status": "filmed",
+   "skipReason": null,
+   "filmedBy": "tolu",
+   "filmedAt": "2026-10-03T10:18:00+01:00",
+   "clip": null,
+   "frames": [
+    {
+     "id": "f-training",
+     "ref": {
+      "kind": "file",
+      "path": "media/walk-2026-10-03/training-room.jpg"
+     },
+     "t": 20.3,
+     "w": 960,
+     "h": 720
+    },
+    {
+     "id": "f-projector",
+     "ref": {
+      "kind": "file",
+      "path": "media/walk-2026-10-03/projector.jpg"
+     },
+     "t": 41.5,
+     "w": 960,
+     "h": 720
+    }
+   ],
+   "labelShots": [],
+   "analysis": {
+    "status": "done",
+    "note": "Demo history: the clip itself is not included."
+   },
+   "updatedAt": "2026-10-03T10:18:00+01:00"
+  },
+  "walks/w-2026-10-03/rooms/corridor-2": {
+   "roomId": "corridor-2",
+   "status": "filmed",
+   "skipReason": null,
+   "filmedBy": "tolu",
+   "filmedAt": "2026-10-03T10:27:00+01:00",
+   "clip": null,
+   "frames": [
+    {
+     "id": "f-ext",
+     "ref": {
+      "kind": "file",
+      "path": "media/walk-2026-10-03/extinguisher.jpg"
+     },
+     "t": 31,
+     "w": 960,
+     "h": 720
+    }
+   ],
+   "labelShots": [],
+   "analysis": {
+    "status": "done",
+    "note": "Demo history: the clip itself is not included."
+   },
+   "updatedAt": "2026-10-03T10:27:00+01:00"
+  },
+  "walks/w-2026-10-03/rooms/plant": {
+   "roomId": "plant",
+   "status": "filmed",
+   "skipReason": null,
+   "filmedBy": "tolu",
+   "filmedAt": "2026-10-03T10:31:00+01:00",
+   "clip": null,
+   "frames": [
+    {
+     "id": "f-gen",
+     "ref": {
+      "kind": "file",
+      "path": "media/walk-2026-10-03/generator.jpg"
+     },
+     "t": 8.2,
+     "w": 960,
+     "h": 720
+    }
+   ],
+   "labelShots": [],
+   "analysis": {
+    "status": "done",
+    "note": "Demo history: the clip itself is not included."
+   },
+   "updatedAt": "2026-10-03T10:31:00+01:00"
+  },
+  "walks/w-2026-10-03/rooms/store-b": {
+   "roomId": "store-b",
+   "status": "filmed",
+   "skipReason": null,
+   "filmedBy": "tolu",
+   "filmedAt": "2026-10-03T10:38:00+01:00",
+   "clip": null,
+   "frames": [],
+   "labelShots": [],
+   "analysis": {
+    "status": "done",
+    "note": "Demo history: the clip itself is not included."
+   },
+   "updatedAt": "2026-10-03T10:38:00+01:00"
+  },
+  "walks/w-2026-10-03/lines/p-204-tv": {
+   "id": "p-204-tv",
+   "walkId": "w-2026-10-03",
+   "roomId": "r-204",
+   "createdAt": "2026-10-03T13:01:00+01:00",
+   "kind": "single_item",
+   "quantity": 1,
+   "categoryId": "television",
+   "description": "Flat-screen television on a wall bracket",
+   "make": {
+    "value": "Sony",
+    "source": "read",
+    "frameId": "f-tv",
+    "box": [
+     0.47,
+     0.82,
+     0.07,
+     0.04
+    ]
+   },
+   "model": null,
+   "serial": null,
+   "tagCode": null,
+   "condition": "good",
+   "conditionReason": "No visible wear or damage",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [
+    {
+     "frameId": "f-tv",
+     "box": [
+      0.2,
+      0.15,
+      0.6,
+      0.65
+     ]
+    }
+   ],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:01:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-1043",
+   "version": 1
+  },
+  "walks/w-2026-10-03/lines/p-204-bed": {
+   "id": "p-204-bed",
+   "walkId": "w-2026-10-03",
+   "roomId": "r-204",
+   "createdAt": "2026-10-03T13:02:00+01:00",
+   "kind": "single_item",
+   "quantity": 1,
+   "categoryId": "bed",
+   "description": "King-size bed with upholstered headboard",
+   "make": null,
+   "model": null,
+   "serial": null,
+   "tagCode": null,
+   "condition": "good",
+   "conditionReason": "No visible wear or damage",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [
+    {
+     "frameId": "f-bed",
+     "box": [
+      0,
+      0.22,
+      1,
+      0.78
+     ]
+    }
+   ],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:02:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-1075",
+   "version": 1
+  },
+  "walks/w-2026-10-03/lines/p-204-armchair": {
+   "id": "p-204-armchair",
+   "walkId": "w-2026-10-03",
+   "roomId": "r-204",
+   "createdAt": "2026-10-03T13:03:00+01:00",
+   "kind": "single_item",
+   "quantity": 1,
+   "categoryId": "armchair",
+   "description": "Upholstered armchair, cream fabric, dark wood frame",
+   "make": null,
+   "model": null,
+   "serial": null,
+   "tagCode": null,
+   "condition": "good",
+   "conditionReason": "No visible wear or damage",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [
+    {
+     "frameId": "f-armchair",
+     "box": [
+      0.16,
+      0.26,
+      0.68,
+      0.64
+     ]
+    }
+   ],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:03:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-1078",
+   "version": 1
+  },
+  "walks/w-2026-10-03/lines/p-204-print": {
+   "id": "p-204-print",
+   "walkId": "w-2026-10-03",
+   "roomId": "r-204",
+   "createdAt": "2026-10-03T13:04:00+01:00",
+   "kind": "single_item",
+   "quantity": 1,
+   "categoryId": "framed-art",
+   "description": "Framed print of a white lily",
+   "make": null,
+   "model": null,
+   "serial": null,
+   "tagCode": null,
+   "condition": "good",
+   "conditionReason": "No visible wear or damage",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [
+    {
+     "frameId": "f-print",
+     "box": [
+      0.32,
+      0,
+      0.42,
+      0.86
+     ]
+    }
+   ],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:04:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-1081",
+   "version": 1
+  },
+  "walks/w-2026-10-03/lines/p-204-lamps": {
+   "id": "p-204-lamps",
+   "walkId": "w-2026-10-03",
+   "roomId": "r-204",
+   "createdAt": "2026-10-03T13:05:00+01:00",
+   "kind": "counted_group",
+   "quantity": 2,
+   "categoryId": "table-lamp",
+   "description": "Bedside lamps, white shade, ceramic base",
+   "make": null,
+   "model": null,
+   "serial": null,
+   "tagCode": null,
+   "condition": "good",
+   "conditionReason": "No visible wear or damage",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [
+    {
+     "frameId": "f-lamps",
+     "box": [
+      0.33,
+      0.36,
+      0.33,
+      0.56
+     ]
+    }
+   ],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:05:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-1102",
+   "version": 1
+  },
+  "walks/w-2026-10-03/lines/p-112-ac": {
+   "id": "p-112-ac",
+   "walkId": "w-2026-10-03",
+   "roomId": "r-112",
+   "createdAt": "2026-10-03T13:06:00+01:00",
+   "kind": "single_item",
+   "quantity": 1,
+   "categoryId": "split-ac",
+   "description": "Wall-mounted split air conditioner, indoor unit",
+   "make": {
+    "value": "LG",
+    "source": "read",
+    "frameId": "f-badge",
+    "box": [
+     0.16,
+     0.24,
+     0.14,
+     0.16
+    ]
+   },
+   "model": {
+    "value": "S4-Q12JA3QA",
+    "source": "read",
+    "frameId": "l-ac",
+    "box": [
+     0.45,
+     0.19,
+     0.22,
+     0.05
+    ]
+   },
+   "serial": {
+    "value": "310KAP0X2181",
+    "source": "read",
+    "frameId": "l-ac",
+    "box": [
+     0.45,
+     0.25,
+     0.22,
+     0.05
+    ]
+   },
+   "tagCode": null,
+   "condition": "good",
+   "conditionReason": "No visible wear or damage",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [
+    {
+     "frameId": "f-ac",
+     "box": [
+      0.03,
+      0.08,
+      0.94,
+      0.42
+     ]
+    },
+    {
+     "frameId": "f-badge",
+     "box": [
+      0.16,
+      0.24,
+      0.14,
+      0.16
+     ]
+    },
+    {
+     "frameId": "l-ac",
+     "box": null
+    }
+   ],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:06:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-0450",
+   "version": 1
+  },
+  "walks/w-2026-10-03/lines/p-board-table": {
+   "id": "p-board-table",
+   "walkId": "w-2026-10-03",
+   "roomId": "boardroom",
+   "createdAt": "2026-10-03T13:07:00+01:00",
+   "kind": "single_item",
+   "quantity": 1,
+   "categoryId": "meeting-table",
+   "description": "Round meeting table, light wood top",
+   "make": null,
+   "model": null,
+   "serial": null,
+   "tagCode": null,
+   "condition": "good",
+   "conditionReason": "No visible wear or damage",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [
+    {
+     "frameId": "f-meeting",
+     "box": [
+      0,
+      0.56,
+      0.46,
+      0.44
+     ]
+    }
+   ],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:07:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-0301",
+   "version": 1
+  },
+  "walks/w-2026-10-03/lines/p-board-chairs": {
+   "id": "p-board-chairs",
+   "walkId": "w-2026-10-03",
+   "roomId": "boardroom",
+   "createdAt": "2026-10-03T13:08:00+01:00",
+   "kind": "counted_group",
+   "quantity": 2,
+   "categoryId": "office-chair",
+   "description": "Mesh office chairs on castors",
+   "make": null,
+   "model": null,
+   "serial": null,
+   "tagCode": null,
+   "condition": "good",
+   "conditionReason": "No visible wear or damage",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [
+    {
+     "frameId": "f-meeting",
+     "box": [
+      0.27,
+      0.4,
+      0.73,
+      0.6
+     ]
+    }
+   ],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:08:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-0310",
+   "version": 1
+  },
+  "walks/w-2026-10-03/lines/p-train-projector": {
+   "id": "p-train-projector",
+   "walkId": "w-2026-10-03",
+   "roomId": "training",
+   "createdAt": "2026-10-03T13:09:00+01:00",
+   "kind": "single_item",
+   "quantity": 1,
+   "categoryId": "projector",
+   "description": "Ceiling-mounted projector, white body",
+   "make": null,
+   "model": null,
+   "serial": null,
+   "tagCode": {
+    "value": "FA-0412",
+    "source": "read",
+    "frameId": "f-projector",
+    "box": [
+     0.05,
+     0.52,
+     0.29,
+     0.2
+    ]
+   },
+   "condition": "good",
+   "conditionReason": "No visible wear or damage",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [
+    {
+     "frameId": "f-projector",
+     "box": [
+      0,
+      0.08,
+      0.98,
+      0.84
+     ]
+    }
+   ],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:09:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-0412",
+   "version": 1
+  },
+  "walks/w-2026-10-03/lines/p-train-chairs": {
+   "id": "p-train-chairs",
+   "walkId": "w-2026-10-03",
+   "roomId": "training",
+   "createdAt": "2026-10-03T13:10:00+01:00",
+   "kind": "counted_group",
+   "quantity": 32,
+   "categoryId": "stacking-chair",
+   "description": "Training chairs, wooden seat, metal frame",
+   "make": null,
+   "model": null,
+   "serial": null,
+   "tagCode": null,
+   "condition": "good",
+   "conditionReason": "No visible wear or damage",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [
+    {
+     "frameId": "f-training",
+     "box": [
+      0,
+      0.42,
+      1,
+      0.58
+     ]
+    }
+   ],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:10:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-0877",
+   "version": 1
+  },
+  "walks/w-2026-10-03/lines/p-train-desks": {
+   "id": "p-train-desks",
+   "walkId": "w-2026-10-03",
+   "roomId": "training",
+   "createdAt": "2026-10-03T13:11:00+01:00",
+   "kind": "counted_group",
+   "quantity": 16,
+   "categoryId": "student-desk",
+   "description": "Student desks, laminate top, metal legs",
+   "make": null,
+   "model": null,
+   "serial": null,
+   "tagCode": null,
+   "condition": "fair",
+   "conditionReason": "Laminate chipped on several edges",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [
+    {
+     "frameId": "f-training",
+     "box": [
+      0,
+      0.36,
+      1,
+      0.6
+     ]
+    }
+   ],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:11:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-0880",
+   "version": 1
+  },
+  "walks/w-2026-10-03/lines/p-train-board": {
+   "id": "p-train-board",
+   "walkId": "w-2026-10-03",
+   "roomId": "training",
+   "createdAt": "2026-10-03T13:12:00+01:00",
+   "kind": "single_item",
+   "quantity": 1,
+   "categoryId": "chalkboard",
+   "description": "Wall-mounted chalkboard",
+   "make": null,
+   "model": null,
+   "serial": null,
+   "tagCode": null,
+   "condition": "good",
+   "conditionReason": "No visible wear or damage",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [
+    {
+     "frameId": "f-training",
+     "box": [
+      0.36,
+      0.13,
+      0.28,
+      0.17
+     ]
+    }
+   ],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:12:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-0890",
+   "version": 1
+  },
+  "walks/w-2026-10-03/lines/p-c2-ext": {
+   "id": "p-c2-ext",
+   "walkId": "w-2026-10-03",
+   "roomId": "corridor-2",
+   "createdAt": "2026-10-03T13:13:00+01:00",
+   "kind": "single_item",
+   "quantity": 1,
+   "categoryId": "fire-extinguisher",
+   "description": "Dry powder fire extinguisher on a wall hook",
+   "make": null,
+   "model": null,
+   "serial": null,
+   "tagCode": null,
+   "condition": "good",
+   "conditionReason": "Gauge in the green, seal and tag intact",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [
+    {
+     "frameId": "f-ext",
+     "box": [
+      0.3,
+      0,
+      0.42,
+      1
+     ]
+    }
+   ],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:13:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-0233",
+   "version": 1
+  },
+  "walks/w-2026-10-03/lines/p-plant-gen": {
+   "id": "p-plant-gen",
+   "walkId": "w-2026-10-03",
+   "roomId": "plant",
+   "createdAt": "2026-10-03T13:14:00+01:00",
+   "kind": "single_item",
+   "quantity": 1,
+   "categoryId": "generator",
+   "description": "Petrol generator in an open frame",
+   "make": null,
+   "model": null,
+   "serial": null,
+   "tagCode": null,
+   "condition": "fair",
+   "conditionReason": "Surface rust on the frame",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [
+    {
+     "frameId": "f-gen",
+     "box": [
+      0.06,
+      0.1,
+      0.88,
+      0.78
+     ]
+    }
+   ],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:14:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-0101",
+   "version": 1
+  },
+  "walks/w-2026-10-03/lines/p-sb-dispenser": {
+   "id": "p-sb-dispenser",
+   "walkId": "w-2026-10-03",
+   "roomId": "store-b",
+   "createdAt": "2026-10-03T13:15:00+01:00",
+   "kind": "single_item",
+   "quantity": 1,
+   "categoryId": "water-dispenser",
+   "description": "Water dispenser, hot and cold",
+   "make": null,
+   "model": null,
+   "serial": null,
+   "tagCode": null,
+   "condition": "good",
+   "conditionReason": "No visible wear or damage",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:15:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-0601",
+   "version": 1
+  },
+  "walks/w-2026-10-03/lines/p-sb-fridge": {
+   "id": "p-sb-fridge",
+   "walkId": "w-2026-10-03",
+   "roomId": "store-b",
+   "createdAt": "2026-10-03T13:16:00+01:00",
+   "kind": "single_item",
+   "quantity": 1,
+   "categoryId": "mini-fridge",
+   "description": "Mini fridge, single door",
+   "make": null,
+   "model": null,
+   "serial": null,
+   "tagCode": null,
+   "condition": "good",
+   "conditionReason": "No visible wear or damage",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:16:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-0602",
+   "version": 1
+  },
+  "walks/w-2026-10-03/lines/p-sb-fans": {
+   "id": "p-sb-fans",
+   "walkId": "w-2026-10-03",
+   "roomId": "store-b",
+   "createdAt": "2026-10-03T13:17:00+01:00",
+   "kind": "counted_group",
+   "quantity": 3,
+   "categoryId": "standing-fan",
+   "description": "Standing fans",
+   "make": null,
+   "model": null,
+   "serial": null,
+   "tagCode": null,
+   "condition": "good",
+   "conditionReason": "No visible wear or damage",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:17:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-0603",
+   "version": 1
+  },
+  "walks/w-2026-10-03/lines/p-sb-chairs": {
+   "id": "p-sb-chairs",
+   "walkId": "w-2026-10-03",
+   "roomId": "store-b",
+   "createdAt": "2026-10-03T13:18:00+01:00",
+   "kind": "counted_group",
+   "quantity": 4,
+   "categoryId": "office-chair",
+   "description": "Spare mesh office chairs",
+   "make": null,
+   "model": null,
+   "serial": null,
+   "tagCode": null,
+   "condition": "good",
+   "conditionReason": "No visible wear or damage",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:18:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-0604",
+   "version": 1
+  },
+  "walks/w-2026-10-03/lines/p-sb-printer": {
+   "id": "p-sb-printer",
+   "walkId": "w-2026-10-03",
+   "roomId": "store-b",
+   "createdAt": "2026-10-03T13:19:00+01:00",
+   "kind": "single_item",
+   "quantity": 1,
+   "categoryId": "printer",
+   "description": "Laser printer",
+   "make": null,
+   "model": null,
+   "serial": null,
+   "tagCode": null,
+   "condition": "good",
+   "conditionReason": "No visible wear or damage",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:19:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-0605",
+   "version": 1
+  },
+  "walks/w-2026-10-03/lines/p-sb-safe": {
+   "id": "p-sb-safe",
+   "walkId": "w-2026-10-03",
+   "roomId": "store-b",
+   "createdAt": "2026-10-03T13:20:00+01:00",
+   "kind": "single_item",
+   "quantity": 1,
+   "categoryId": "safe",
+   "description": "Digital safe, floor-standing",
+   "make": null,
+   "model": null,
+   "serial": null,
+   "tagCode": null,
+   "condition": "good",
+   "conditionReason": "No visible wear or damage",
+   "band": "high",
+   "bandReason": null,
+   "safety": null,
+   "evidence": [],
+   "proposedBy": {
+    "kind": "demo-history",
+    "at": "2026-10-03T13:00:00+01:00"
+   },
+   "status": "accepted",
+   "decision": {
+    "kind": "accept",
+    "by": "chinedu",
+    "at": "2026-10-03T14:20:00+01:00",
+    "reason": null,
+    "bulk": false
+   },
+   "history": [],
+   "notes": [],
+   "registerId": "FA-0606",
+   "version": 1
+  },
+  "walks/w-current": {
+   "id": "w-current",
+   "siteId": "ikeja",
+   "label": "Monthly walk",
+   "status": "capturing",
+   "startedAt": null,
+   "finishedAt": null,
+   "capturedBy": [],
+   "approvedAt": null,
+   "approvedBy": null,
+   "previousWalkId": "w-2026-10-03",
+   "demoHistory": false,
+   "events": []
+  },
+  "walks/w-current/rooms/r-204": {
+   "roomId": "r-204",
+   "status": "not_started",
+   "skipReason": null,
+   "filmedBy": null,
+   "filmedAt": null,
+   "clip": null,
+   "frames": [],
+   "labelShots": [],
+   "analysis": {
+    "status": "idle"
+   },
+   "updatedAt": "2026-11-04T00:00:00+01:00"
+  },
+  "walks/w-current/rooms/r-112": {
+   "roomId": "r-112",
+   "status": "not_started",
+   "skipReason": null,
+   "filmedBy": null,
+   "filmedAt": null,
+   "clip": null,
+   "frames": [],
+   "labelShots": [],
+   "analysis": {
+    "status": "idle"
+   },
+   "updatedAt": "2026-11-04T00:00:00+01:00"
+  },
+  "walks/w-current/rooms/boardroom": {
+   "roomId": "boardroom",
+   "status": "not_started",
+   "skipReason": null,
+   "filmedBy": null,
+   "filmedAt": null,
+   "clip": null,
+   "frames": [],
+   "labelShots": [],
+   "analysis": {
+    "status": "idle"
+   },
+   "updatedAt": "2026-11-04T00:00:00+01:00"
+  },
+  "walks/w-current/rooms/training": {
+   "roomId": "training",
+   "status": "not_started",
+   "skipReason": null,
+   "filmedBy": null,
+   "filmedAt": null,
+   "clip": null,
+   "frames": [],
+   "labelShots": [],
+   "analysis": {
+    "status": "idle"
+   },
+   "updatedAt": "2026-11-04T00:00:00+01:00"
+  },
+  "walks/w-current/rooms/corridor-2": {
+   "roomId": "corridor-2",
+   "status": "not_started",
+   "skipReason": null,
+   "filmedBy": null,
+   "filmedAt": null,
+   "clip": null,
+   "frames": [],
+   "labelShots": [],
+   "analysis": {
+    "status": "idle"
+   },
+   "updatedAt": "2026-11-04T00:00:00+01:00"
+  },
+  "walks/w-current/rooms/plant": {
+   "roomId": "plant",
+   "status": "not_started",
+   "skipReason": null,
+   "filmedBy": null,
+   "filmedAt": null,
+   "clip": null,
+   "frames": [],
+   "labelShots": [],
+   "analysis": {
+    "status": "idle"
+   },
+   "updatedAt": "2026-11-04T00:00:00+01:00"
+  },
+  "walks/w-current/rooms/store-b": {
+   "roomId": "store-b",
+   "status": "not_started",
+   "skipReason": null,
+   "filmedBy": null,
+   "filmedAt": null,
+   "clip": null,
+   "frames": [],
+   "labelShots": [],
+   "analysis": {
+    "status": "idle"
+   },
+   "updatedAt": "2026-11-04T00:00:00+01:00"
+  }
+ }
+}

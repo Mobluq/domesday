@@ -106,6 +106,28 @@ export {
   type SourceRegion,
 } from './rules/register';
 export {
+  correctionsFrom,
+  reconcileWithRegister,
+  type CorrectionRow,
+  type MatchCandidate,
+  type MatchDecision,
+  type ReconItem,
+  type ReconItemStatus,
+  type ReconcilableLine,
+  type ReconcileInput,
+  type ReconcileResult,
+  type RegisterLine,
+} from './rules/reconcile';
+export {
+  CROCKFORD_ALPHABET,
+  VERIFICATION_CODE_LENGTH,
+  canonicalReportText,
+  crockfordBase32,
+  formatVerificationCode,
+  normaliseVerificationCode,
+  verificationCodeFromDigest,
+} from './rules/verification';
+export {
   WhatsAppSummaryError,
   buildWhatsAppSummary,
   cleanSiteName,
