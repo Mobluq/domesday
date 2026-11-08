@@ -9,7 +9,7 @@ import type { Category, Person, Register, RegisterEntry, RoomDef, Site } from '.
 import { saveFile } from '../runtime/media';
 import type { Json } from '../runtime/types';
 import { go } from '../route';
-import { Btn, Label, Note } from '../ui/bits';
+import { Btn, Note } from '../ui/bits';
 import { Icon } from '../ui/icons';
 
 /** Rooms most offices and branches have; one tap adds each. */
@@ -385,9 +385,9 @@ export function SetupWizard({ onCancel, categories }: { onCancel: () => void; ca
     <main className="page page--narrow">
       <div className="stack-l" style={{ paddingBlock: '32px 64px' }}>
         <div className="stack-s">
-          <Label>
-            SET UP YOUR SITE · STEP {step + 1} OF {STEPS.length}
-          </Label>
+          <p className="kicker">
+            Set up your site · step {step + 1} of {STEPS.length}
+          </p>
           <ol className="steps" aria-label="Setup steps">
             {STEPS.map((s, i) => (
               <li key={s} aria-current={i === step ? 'step' : undefined} data-done={i < step || undefined}>
@@ -636,7 +636,7 @@ export function SitePage(): ReactElement {
     <main className="page">
       <div className="page-head">
         <div className="page-head__text">
-          <Label>SITE SETUP · {site.name.toUpperCase()}</Label>
+          <p className="kicker">{site.name} · Site setup</p>
           <h1 className="display-m">Site setup</h1>
           <p className="ui-body muted">Rooms, people, rules and the books this site is checked against. Changes apply for everyone straight away.</p>
         </div>

@@ -34,7 +34,7 @@ import {
 import { useData, usePersona, useToast, type WalkBundle } from '../data/store';
 import type { Register, ReportRecord, Site } from '../data/types';
 import { saveFile } from '../runtime/media';
-import { Btn, Label, Note } from '../ui/bits';
+import { Btn, Note } from '../ui/bits';
 import { Hallmark } from '../ui/brand';
 
 /** The report's text, as hashed for the verification code: everything a reader sees except the code itself. */
@@ -469,7 +469,7 @@ export function ReportPage(): ReactElement {
     <main className="page">
       <div className="page-head">
         <div className="page-head__text">
-          <Label>ASSET VERIFICATION REPORT · {m.number}</Label>
+          <p className="kicker">Asset verification report · {m.number}</p>
           <h1 className="ui-title-l">
             {site.name}, walk of {current.walk.startedAt ? fmtDayMonth(current.walk.startedAt) : 'today'}
           </h1>

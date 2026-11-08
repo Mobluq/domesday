@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:artifact": "vite build && node scripts/artifact.mjs",
+    "build:artifact": "DOMESDAY_ARTIFACT=1 vite build && node scripts/artifact.mjs",
     "preview": "vite preview",
     "media": "python3 scripts/make_media.py",
     "seed": "node scripts/make-seed.mjs",
@@ -26,11 +26,13 @@
     "@tensorflow/tfjs-core": "4.22.0",
     "ioredis": "5.4.1",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "three": "0.170.0"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/three": "0.170.0",
     "@vitejs/plugin-react": "^6.2.1",
     "typescript": "~6.0.3",
     "vite": "^8.3.5",

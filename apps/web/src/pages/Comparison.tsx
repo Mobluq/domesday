@@ -23,7 +23,7 @@ import type { Followup, Line, Site } from '../data/types';
 import { urlFor } from '../runtime/media';
 import { go } from '../route';
 import { CameraHint } from './Cameras';
-import { Btn, Chip, EvidenceFrame, Label, Note, type ChipStatus } from '../ui/bits';
+import { Btn, Chip, EvidenceFrame, Note, type ChipStatus } from '../ui/bits';
 import { Icon, type IconName } from '../ui/icons';
 
 type Filter = 'all' | 'unsafe' | ChangeStatus;
@@ -135,7 +135,7 @@ export function ComparisonPage(): ReactElement {
     return (
       <main className="page page--narrow">
         <div className="stack-l" style={{ paddingBlock: '40px' }}>
-          <Label>COMPARISON · {site.name.toUpperCase()}</Label>
+          <p className="kicker">{site.name} · Comparison</p>
           <h1 className="display-m" style={{ margin: 0 }}>
             Nothing to compare with yet
           </h1>
@@ -354,9 +354,9 @@ export function ComparisonPage(): ReactElement {
     <main className="page">
       <div className="page-head" style={{ paddingTop: 40 }}>
         <div className="page-head__text" style={{ gap: 12 }}>
-          <Label>
-            {site.name.toUpperCase()} · WALK OF {curDate ? fmtDate(curDate).toUpperCase() : 'TODAY'} · {approved ? `APPROVED BY ${personName(site, current.walk.approvedBy).toUpperCase()}` : 'DRAFT, NOT YET APPROVED'}
-          </Label>
+          <p className="kicker">
+            {site.name} · walk of {curDate ? fmtDate(curDate) : 'today'} · {approved ? `approved by ${personName(site, current.walk.approvedBy)}` : 'draft, not yet approved'}
+          </p>
           <h1 className="display-l">{comparisonHeadline(result.changeCount, prevDate)}</h1>
           <p className="ui-body muted">
             {plural(lineCount, 'asset line', 'asset lines')} checked. {plural(unchanged.length, 'unchanged', 'unchanged')}.{' '}

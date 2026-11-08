@@ -3,7 +3,7 @@ import { useState, type ReactElement } from 'react';
 import { fmtDate, fmtDateTime, personName } from '../data/derive';
 import { useData } from '../data/store';
 import type { ReportRecord } from '../data/types';
-import { Btn, Label, Note } from '../ui/bits';
+import { Btn, Note } from '../ui/bits';
 import { Icon } from '../ui/icons';
 import { codeForText, reportText } from './Report';
 
@@ -63,7 +63,7 @@ export function VerifyPage(): ReactElement {
     <main className="page page--narrow">
       <div className="stack-l" style={{ paddingBlock: '40px 64px' }}>
         <div className="stack-s">
-          <Label>VERIFY A REPORT</Label>
+          <p className="kicker">Verify a report</p>
           <h1 className="display-m">Is this report genuine and unchanged?</h1>
           <p className="ui-body muted">
             Enter the code printed on the cover, or check a downloaded report file. The check never shows what the report says, only whether it is the one that was issued.

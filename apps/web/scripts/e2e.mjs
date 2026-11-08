@@ -134,6 +134,9 @@ async function newPage(viewport, persona, opts = {}) {
     if (m.type() === 'error') errors.push(m.text());
   });
   page.on('pageerror', (e) => errors.push(String(e)));
+  page.on('response', (r) => {
+    if (r.status() === 404) errors.push(`404: ${r.url().replace(/^https?:\/\/[^/]+/, '')}`);
+  });
   return page;
 }
 const shot = async (page, name, full = true) => {
@@ -156,6 +159,10 @@ for (const room of ['Room 204', 'Room 112', 'Boardroom', 'Training room', 'Corri
   await page.getByRole('button', { name: 'Rooms', exact: true }).click();
   step(`filmed ${room} with sample footage`);
 }
+await page.goto(`${base}#walks`);
+await page.getByRole('heading', { name: 'Monthly walk' }).waitFor();
+await shot(page, '03b-walks-filmed', false);
+await page.goto(`${base}#capture`);
 await page.getByRole('button', { name: /^Store room B:/ }).click();
 await page.getByRole('button', { name: 'Skip this room' }).click();
 await page.getByRole('button', { name: 'Locked, no key on site' }).click();
@@ -372,7 +379,7 @@ await fresh.getByRole('button', { name: 'Next' }).click();
 await fresh.getByRole('button', { name: 'Create the site' }).click();
 await fresh.getByRole('heading', { name: 'First walk' }).waitFor({ timeout: 20000 });
 if (await fresh.getByRole('dialog').count()) await fresh.getByRole('button', { name: 'Skip' }).click();
-const siteText = await fresh.locator('.page-head').innerText();
+const siteText = await fresh.locator('.ov-head').innerText();
 step(`own site created: ${siteText.split('\n')[0]}`);
 await shot(fresh, '21-own-site');
 await fresh.goto(`${base}#compare`);

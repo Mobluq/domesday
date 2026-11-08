@@ -50,7 +50,9 @@ function RoomList({ onPick }: { onPick: (id: string) => void }): ReactElement {
     <>
       <div className="capture-head">
         <div className="stack-xs">
-          <Label>MONTHLY WALK · {current.walk.startedAt ? fmtDate(current.walk.startedAt).toUpperCase() : 'NOT STARTED'}</Label>
+          <p className="kicker">
+            {current.walk.label || 'Monthly walk'} · {current.walk.startedAt ? fmtDate(current.walk.startedAt) : 'not started'}
+          </p>
           <h1 className="ui-title-l">{site.name}</h1>
           {previous ? (
             <span className="ui-body-s muted">

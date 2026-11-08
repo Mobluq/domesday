@@ -4,7 +4,11 @@ import { applyChange, describeChange, resolveChanges, splitAnswer, type Resolved
 import { canLabel } from '../data/actions';
 import { useData, usePersona, useToast } from '../data/store';
 import { Icon } from './icons';
-import { Orb } from './orb';
+
+/** Ask from anywhere: opens the panel and, given a question, asks it straight away. */
+export function openAsk(question?: string): void {
+  window.dispatchEvent(new CustomEvent('domesday:ask', { detail: { question: question ?? null } }));
+}
 
 /** Line numbers and register IDs stand out in answers, as they do everywhere else. */
 function withRefs(text: string): ReactNode[] {
@@ -62,11 +66,12 @@ function readPerm(personId: string): boolean {
 }
 
 /**
- * Ask Domesday: a question box over the whole inventory. It opens from the corner of any
- * screen, answers in a second or two, and keeps the conversation while you move around. With
- * permission, it can also propose changes, which happen only when the person taps Apply.
+ * Ask Domesday AI: questions about the whole inventory, answered as a transcript (Q. and A.,
+ * the way the survey recorded its answers). It opens from the top bar on any screen and keeps
+ * the conversation while you move around. With permission it can propose changes, which happen
+ * only when the person taps Apply.
  */
-export function AskDomesday({ hideLauncher }: { hideLauncher?: boolean }): ReactElement | null {
+export function AskDomesday(): ReactElement | null {
   const data = useData();
   const { person, personId } = usePersona();
   const { say } = useToast();
@@ -179,15 +184,7 @@ export function AskDomesday({ hideLauncher }: { hideLauncher?: boolean }): React
     }
   };
 
-  if (!open) {
-    if (hideLauncher) return null;
-    return (
-      <button type="button" className="ask-launch" onClick={() => setOpen(true)} aria-label="Ask about the inventory" title="Ask about the inventory (Ctrl K)">
-        <Orb size={22} />
-        <span>Ask Domesday</span>
-      </button>
-    );
-  }
+  if (!open) return null;
 
   const site = data.site;
   const current = data.current;
@@ -195,16 +192,15 @@ export function AskDomesday({ hideLauncher }: { hideLauncher?: boolean }): React
   return (
     <section className="ask" role="dialog" aria-label="Ask about the inventory">
       <header className="ask__head">
-        <Orb size={34} thinking={busy} />
         <div className="stack-xs" style={{ minWidth: 0, flex: 1 }}>
-          <span className="ask__title">Ask Domesday</span>
-          <span className="ask__sub">{busy ? 'Reading the walk and the books…' : `${site.name} · answers from the walks and the register`}</span>
+          <h2 className="ask__title">Ask Domesday AI</h2>
+          <p className="ask__sub">{busy ? 'Reading the walk and the register…' : `${site.name}. Answers come from the walks and the register.`}</p>
         </div>
-        <div className="row" style={{ gap: 4, flexWrap: 'nowrap' }}>
+        <div className="ask__tools">
           {turns.length ? (
             <button
               type="button"
-              className="ask__icon-btn"
+              className="linklike"
               onClick={() => {
                 ctl.current?.abort();
                 setTurns([]);
@@ -214,14 +210,13 @@ export function AskDomesday({ hideLauncher }: { hideLauncher?: boolean }): React
                 setAnswer(null);
                 notes.current = [];
               }}
-              aria-label="Start a new conversation"
-              title="New conversation"
+              title="Start a new conversation"
             >
-              <Icon name="refresh" size={18} />
+              New
             </button>
           ) : null}
-          <button type="button" className="ask__icon-btn" onClick={() => setOpen(false)} aria-label="Close">
-            <Icon name="reject" size={18} />
+          <button type="button" className="linklike" onClick={() => setOpen(false)} aria-label="Close">
+            Close
           </button>
         </div>
       </header>
@@ -230,11 +225,11 @@ export function AskDomesday({ hideLauncher }: { hideLauncher?: boolean }): React
         <label className="ask__perm" data-on={canChange || undefined}>
           <input type="checkbox" role="switch" checked={canChange} disabled={!roleMayChange} onChange={(e) => setPermission(e.target.checked)} />
           <span className="stack-xs">
-            <span className="ui-body-strong">Let the assistant make changes</span>
+            <span className="ui-body-strong">Let it make changes</span>
             <span className="ui-body-s muted">
               {roleMayChange
                 ? canChange
-                  ? 'It proposes edits, decisions, follow-ups and rooms. Nothing happens until you tap Apply.'
+                  ? 'It can propose edits, decisions, follow-ups and rooms. Nothing changes until you tap Apply.'
                   : 'Off: it only answers.'
                 : `${person?.roleLabel ?? 'Your role'} can't make changes here. A reviewer or administrator can.`}
             </span>
@@ -248,7 +243,7 @@ export function AskDomesday({ hideLauncher }: { hideLauncher?: boolean }): React
         ) : turns.length === 0 ? (
           <div className="stack-m">
             <p className="ui-body muted">
-              Ask anything about what's on this site: counts, rooms, condition, values, what changed and what the books say.
+              Ask about anything on this site: counts, rooms, condition, values, what changed and what the books say.
               {canChange ? ' You can also ask it to fix a line, reject a duplicate, open an investigation or add a room.' : ''}
             </p>
             <div className="ask__ideas">
@@ -263,9 +258,12 @@ export function AskDomesday({ hideLauncher }: { hideLauncher?: boolean }): React
         {turns.map((t, i) => {
           if (t.role === 'user') {
             return (
-              <p key={i} className="ask__q">
-                {t.shown ?? t.content}
-              </p>
+              <div key={i} className="ask__q">
+                <span className="ask__tag" aria-hidden="true">
+                  Q.
+                </span>
+                <p>{t.shown ?? t.content}</p>
+              </div>
             );
           }
           const { display } = splitAnswer(t.content);
@@ -273,69 +271,71 @@ export function AskDomesday({ hideLauncher }: { hideLauncher?: boolean }): React
           const pending = proposal ? proposal.changes.filter((_, j) => (cards[`${i}:${j}`]?.state ?? 'idle') === 'idle') : [];
           return (
             <div key={i} className="ask__a">
-              <span className="ask__who">
-                <Orb size={14} /> Domesday
+              <span className="ask__tag" aria-hidden="true">
+                A.
               </span>
-              <Answer text={display} />
-              {proposal && current ? (
-                <div className="ask__changes">
-                  {proposal.changes.map((c, j) => {
-                    const key = `${i}:${j}`;
-                    const st = cards[key] ?? { state: 'idle' as const };
-                    const d = describeChange(c, site, current);
-                    return (
-                      <div key={key} className="ask__change" data-state={st.state}>
-                        <span className="ui-body-strong">{d.title}</span>
-                        {d.detail ? <span className="ui-body-s">{d.detail}</span> : null}
-                        {st.state === 'idle' ? (
-                          <div className="row" style={{ gap: 8 }}>
-                            <button type="button" className="dms-btn dms-btn--primary ask__apply" onClick={() => void apply(key, c)}>
-                              Apply
-                            </button>
-                            <button type="button" className="dms-btn dms-btn--quiet ask__apply" onClick={() => setCards((cs) => ({ ...cs, [key]: { state: 'skipped' } }))}>
-                              Skip
-                            </button>
-                          </div>
-                        ) : st.state === 'busy' ? (
-                          <span className="ui-body-s muted">Applying…</span>
-                        ) : st.state === 'done' ? (
-                          <span className="ask__status ask__status--ok">
-                            <Icon name="found" size={16} /> {st.message}
-                          </span>
-                        ) : st.state === 'refused' ? (
-                          <span className="ask__status ask__status--no">{st.message}</span>
-                        ) : (
-                          <span className="ui-body-s muted">Skipped</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {pending.length > 1 ? (
-                    <button
-                      type="button"
-                      className="dms-btn dms-btn--secondary ask__apply"
-                      onClick={async () => {
-                        for (const [j, c] of proposal.changes.entries()) {
-                          const key = `${i}:${j}`;
-                          if ((cards[key]?.state ?? 'idle') === 'idle') await apply(key, c);
-                        }
-                      }}
-                    >
-                      Apply all {pending.length}
-                    </button>
-                  ) : null}
-                  {proposal.problems.length ? <p className="ask__problem">Not proposed: {proposal.problems.join(' ')}</p> : null}
-                </div>
-              ) : null}
+              <div className="ask__text">
+                <Answer text={display} />
+                {proposal && current ? (
+                  <div className="ask__changes">
+                    {proposal.changes.map((c, j) => {
+                      const key = `${i}:${j}`;
+                      const st = cards[key] ?? { state: 'idle' as const };
+                      const d = describeChange(c, site, current);
+                      return (
+                        <div key={key} className="ask__change" data-state={st.state}>
+                          <span className="ui-body-strong">{d.title}</span>
+                          {d.detail ? <span className="ui-body-s">{d.detail}</span> : null}
+                          {st.state === 'idle' ? (
+                            <div className="row" style={{ gap: 16 }}>
+                              <button type="button" className="dms-btn dms-btn--primary ask__apply" onClick={() => void apply(key, c)}>
+                                Apply
+                              </button>
+                              <button type="button" className="linklike" onClick={() => setCards((cs) => ({ ...cs, [key]: { state: 'skipped' } }))}>
+                                Skip
+                              </button>
+                            </div>
+                          ) : st.state === 'busy' ? (
+                            <span className="ui-body-s muted">Applying…</span>
+                          ) : st.state === 'done' ? (
+                            <span className="ask__status ask__status--ok">
+                              <Icon name="found" size={16} /> {st.message}
+                            </span>
+                          ) : st.state === 'refused' ? (
+                            <span className="ask__status ask__status--no">{st.message}</span>
+                          ) : (
+                            <span className="ui-body-s muted">Skipped</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {pending.length > 1 ? (
+                      <button
+                        type="button"
+                        className="dms-btn dms-btn--secondary ask__apply"
+                        onClick={async () => {
+                          for (const [j, c] of proposal.changes.entries()) {
+                            const key = `${i}:${j}`;
+                            if ((cards[key]?.state ?? 'idle') === 'idle') await apply(key, c);
+                          }
+                        }}
+                      >
+                        Apply all {pending.length}
+                      </button>
+                    ) : null}
+                    {proposal.problems.length ? <p className="ask__problem">Not proposed: {proposal.problems.join(' ')}</p> : null}
+                  </div>
+                ) : null}
+              </div>
             </div>
           );
         })}
         {answer !== null ? (
           <div className="ask__a" data-streaming>
-            <span className="ask__who">
-              <Orb size={14} thinking /> Domesday
+            <span className="ask__tag" aria-hidden="true">
+              A.
             </span>
-            {splitAnswer(answer).display ? <Answer text={splitAnswer(answer).display} /> : <span className="ask__thinking">Thinking</span>}
+            <div className="ask__text">{splitAnswer(answer).display ? <Answer text={splitAnswer(answer).display} /> : <p className="ask__wait">Reading the records…</p>}</div>
           </div>
         ) : null}
         {error ? <p className="ask__error">{error}</p> : null}
@@ -349,6 +349,9 @@ export function AskDomesday({ hideLauncher }: { hideLauncher?: boolean }): React
           void send(draft);
         }}
       >
+        <label className="sr-only" htmlFor="ask-input">
+          Your question
+        </label>
         <textarea
           ref={inputRef}
           id="ask-input"
@@ -357,7 +360,6 @@ export function AskDomesday({ hideLauncher }: { hideLauncher?: boolean }): React
           value={draft}
           disabled={!available}
           placeholder={available ? (canChange ? 'Ask, or ask for a change' : 'How many chairs are in the training room?') : 'Not connected'}
-          aria-label="Your question"
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -367,12 +369,12 @@ export function AskDomesday({ hideLauncher }: { hideLauncher?: boolean }): React
           }}
         />
         {busy ? (
-          <button type="button" className="ask__send" onClick={() => ctl.current?.abort()} aria-label="Stop the answer">
-            <Icon name="stop" size={18} />
+          <button type="button" className="dms-btn dms-btn--secondary ask__send" onClick={() => ctl.current?.abort()}>
+            Stop
           </button>
         ) : (
-          <button type="submit" className="ask__send" disabled={!draft.trim() || !available} aria-label="Ask">
-            <Icon name="next" size={18} />
+          <button type="submit" className="dms-btn dms-btn--primary ask__send" disabled={!draft.trim() || !available}>
+            Ask
           </button>
         )}
       </form>

@@ -692,7 +692,7 @@ export function ReviewPage(): ReactElement {
       <div className="page-head">
         <div className="page-head__text" style={{ gap: 6 }}>
           <span className="ui-body-s muted">
-            <a href="#walks">Walks</a> / {site.name} / {bundle.walk.startedAt ? fmtDate(bundle.walk.startedAt) : 'current walk'}
+            <a href="#walks">Overview</a> / {site.name} / {bundle.walk.startedAt ? fmtDate(bundle.walk.startedAt) : 'current walk'}
             {capturers.length ? ` · filmed by ${capturers.join(' and ')}` : ''}
           </span>
           <h1 className="ui-title-l">Review</h1>

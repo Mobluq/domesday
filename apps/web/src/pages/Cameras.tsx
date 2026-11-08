@@ -6,7 +6,7 @@ import { useData, usePersona, useToast } from '../data/store';
 import type { CameraCheck, CameraDef } from '../data/types';
 import { urlFor } from '../runtime/media';
 import type { Json } from '../runtime/types';
-import { Btn, Chip, EvidenceFrame, Label, Note } from '../ui/bits';
+import { Btn, Chip, EvidenceFrame, Note } from '../ui/bits';
 import { Icon } from '../ui/icons';
 
 const SCHEDULE: Record<CameraDef['schedule'], string> = { off: 'No schedule', nightly: 'One still nightly at 02:00', 'every-4-hours': 'One still every 4 hours' };
@@ -223,7 +223,7 @@ export function CamerasPage(): ReactElement {
     <main className="page">
       <div className="page-head">
         <div className="page-head__text">
-          <Label>CAMERAS · {site.name.toUpperCase()}</Label>
+          <p className="kicker">{site.name} · Cameras</p>
           <h1 className="display-m">Camera checks between walks</h1>
           <p className="ui-body muted">
             The cameras a site already has, linked to rooms. Each check takes one still and asks which of the room's recorded items can be seen. It is useful for rooms that are

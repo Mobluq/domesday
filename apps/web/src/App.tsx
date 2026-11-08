@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactElement } from 'react';
 import { DataProvider, PersonaProvider, ToastProvider, useData, usePersona, useToast } from './data/store';
 import { seedStore } from './data/actions';
+import { walkProgress } from './data/derive';
 import { defaultCategories } from './data/setup';
 import type { Category } from './data/types';
 import { saveAccessCode } from './runtime/runtime';
@@ -17,9 +18,9 @@ import { WalksPage } from './pages/Walks';
 import { go, useView, VIEWS, type ViewId } from './route';
 import { Note } from './ui/bits';
 import { Hallmark, Wordmark } from './ui/brand';
+import { Gate } from './ui/gate';
 import { Icon } from './ui/icons';
-import { AskDomesday } from './ui/ask';
-import { openAsk, Orb } from './ui/orb';
+import { AskDomesday, openAsk } from './ui/ask';
 import { markTourSeen, Tour, tourSeen } from './ui/tour';
 
 const TOUR_EVENT = 'domesday:tour';
@@ -129,6 +130,11 @@ function PersonaMenu(): ReactElement | null {
 function TopBar({ view }: { view: ViewId }): ReactElement {
   const { site, current } = useData();
   const toReview = current ? current.lines.filter((l) => l.status === 'proposed').length : 0;
+  const progress = site && current ? walkProgress(site, current) : null;
+  const done: Partial<Record<ViewId, boolean>> = {
+    capture: Boolean(progress && progress.total > 0 && progress.filmed + progress.skipped === progress.total),
+    review: current?.walk.status === 'approved',
+  };
   return (
     <header className="topbar">
       <div className="topbar__inner">
@@ -139,8 +145,13 @@ function TopBar({ view }: { view: ViewId }): ReactElement {
           </span>
         </a>
         <nav aria-label="Main" className="mainnav">
-          {VIEWS.map((v) => (
-            <a key={v.id} href={`#${v.id}`} className="mainnav__link" aria-current={view === v.id ? 'page' : undefined}>
+          {VIEWS.map((v, i) => (
+            <a key={v.id} href={`#${v.id}`} className="mainnav__link" aria-current={view === v.id ? 'page' : undefined} data-done={done[v.id] || undefined}>
+              {i > 0 ? (
+                <span className="mainnav__n" aria-hidden="true">
+                  {done[v.id] ? <Icon name="found" size={12} /> : i}
+                </span>
+              ) : null}
               {v.label}
               {v.id === 'review' && toReview > 0 ? <span className="mainnav__count">{toReview}</span> : null}
             </a>
@@ -148,10 +159,9 @@ function TopBar({ view }: { view: ViewId }): ReactElement {
         </nav>
         <div className="topbar__end">
           {site ? (
-            <button type="button" className="cmd-ask" onClick={() => openAsk()} aria-label="Ask Domesday">
-              <Orb size={18} />
-              <span className="cmd-ask__text">Ask Domesday anything</span>
-              <kbd>Ctrl K</kbd>
+            <button type="button" className="topbar__ask" onClick={() => openAsk()} aria-label="Ask about the inventory" title="Ask Domesday AI (Ctrl K)">
+              Ask<span className="topbar__ask-more">Domesday AI</span>
+              <kbd className="dms-kbd">Ctrl K</kbd>
             </button>
           ) : null}
           {site ? <span className="topbar__site ui-body-s">{site.name}</span> : null}
@@ -173,18 +183,29 @@ function SetUp(): ReactElement {
       .then(setCategories)
       .catch(() => setCategories([{ id: 'other', name: 'Other asset', plural: 'other assets' }]));
   }, []);
-  if (wizard && categories) return <SetupWizard categories={categories} onCancel={() => setWizard(false)} />;
+  if (wizard && categories)
+    return (
+      <>
+        <header className="topbar">
+          <div className="topbar__inner">
+            <span className="brand">
+              <Hallmark size={26} />
+              <span className="brand__word">
+                <Wordmark height={19} />
+              </span>
+            </span>
+          </div>
+        </header>
+        <SetupWizard categories={categories} onCancel={() => setWizard(false)} />
+      </>
+    );
   return (
-    <main className="page page--narrow">
-      <div className="stack-l" style={{ paddingBlock: '48px' }}>
-        <Hallmark size={48} />
-        <h1 className="display-m" style={{ margin: 0 }}>
-          Know what's in every room, without the clipboard
-        </h1>
-        <p className="ui-body" style={{ margin: 0, color: 'var(--text-secondary)' }}>
-          Film each room on a phone. Claude lists the assets it can see, a person checks every line, and each walk is compared with the last one and reconciled with your fixed
-          asset register.
-        </p>
+    <Gate>
+      <div className="gate__form">
+        <div className="stack-s">
+          <h1 className="gate__heading">How would you like to start?</h1>
+          <p className="ui-body muted">You can try everything on a demo site first, or set up your own in about five minutes.</p>
+        </div>
         <div className="setup-choices">
           <button
             type="button"
@@ -217,16 +238,16 @@ function SetUp(): ReactElement {
             </span>
             <span className="stack-xs">
               <span className="ui-body-strong">Set up your own site</span>
-              <span className="ui-body-s muted">Name it, add rooms and people, and bring in your register. About five minutes.</span>
+              <span className="ui-body-s muted">Name it, add rooms and people, and bring in your register.</span>
             </span>
             <Icon name="next" />
           </button>
         </div>
-        <p className="ui-body-s muted" style={{ margin: 0 }}>
-          Everyone who opens this copy of Domesday sees the same site.
+        <p className="gate__help">
+          {rt.shared ? 'Everyone who opens this copy of Domesday sees the same site.' : "This view can't share storage, so what you set up here stays on this device."}
         </p>
       </div>
-    </main>
+    </Gate>
   );
 }
 
@@ -235,6 +256,8 @@ const CODE_TRIED = 'domesday.codeTried';
 /** The website asks for its access code once per browser; the code then rides on every request. */
 function AccessCode(): ReactElement {
   const [code, setCode] = useState('');
+  const [show, setShow] = useState(false);
+  const [busy, setBusy] = useState(false);
   const tried = (() => {
     try {
       return sessionStorage.getItem(CODE_TRIED) === '1';
@@ -243,13 +266,14 @@ function AccessCode(): ReactElement {
     }
   })();
   return (
-    <main className="page page--narrow">
+    <Gate>
       <form
-        className="stack-l"
-        style={{ paddingBlock: '64px', maxWidth: 440 }}
+        className="gate__form"
+        data-shake={tried || undefined}
         onSubmit={(e) => {
           e.preventDefault();
           if (!code.trim()) return;
+          setBusy(true);
           saveAccessCode(code);
           try {
             sessionStorage.setItem(CODE_TRIED, '1');
@@ -259,29 +283,42 @@ function AccessCode(): ReactElement {
           window.location.reload();
         }}
       >
-        <Hallmark size={48} />
-        <h1 className="display-m" style={{ margin: 0 }}>
-          Enter the access code
-        </h1>
-        <p className="ui-body muted" style={{ margin: 0 }}>
-          This copy of Domesday is private. Whoever shared the link with you has the code. You only need it once on this device.
-        </p>
+        <div className="stack-s">
+          <h1 className="gate__heading">Enter the access code</h1>
+          <p className="ui-body muted">Whoever shared this link with you has the code. You only need it once on this device.</p>
+        </div>
         {tried ? (
           <Note tone="warn" icon="info">
-            That code didn't work. Check it with whoever shared Domesday with you.
+            That code didn't work. Check it with whoever shared Domesday with you, then try again.
           </Note>
         ) : null}
         <label className="field">
           <span>Access code</span>
-          <input id="access-code" className="input" type="password" autoComplete="current-password" value={code} onChange={(e) => setCode(e.target.value)} autoFocus />
+          <span className="pw">
+            <input
+              id="access-code"
+              className="input"
+              type={show ? 'text' : 'password'}
+              autoComplete="current-password"
+              autoCapitalize="none"
+              spellCheck={false}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              aria-invalid={tried || undefined}
+              autoFocus
+            />
+            <button type="button" className="pw__toggle" onClick={() => setShow((v) => !v)} aria-pressed={show} aria-controls="access-code">
+              {show ? 'Hide' : 'Show'}
+            </button>
+          </span>
         </label>
-        <div>
-          <button type="submit" className="dms-btn dms-btn--primary" disabled={!code.trim()}>
-            Continue
-          </button>
-        </div>
+        <button type="submit" className="dms-btn dms-btn--primary gate__go" disabled={!code.trim() || busy}>
+          {busy ? 'Checking…' : 'Continue'}
+          {busy ? null : <Icon name="next" />}
+        </button>
+        <p className="gate__help">The code is saved on this device, so you won't be asked again here.</p>
       </form>
-    </main>
+    </Gate>
   );
 }
 
@@ -337,9 +374,16 @@ function Shell(): ReactElement {
   } catch {
     // fine
   }
+  if (loaded && !site) {
+    return (
+      <div className="app">
+        <SetUp />
+        <Toasts />
+      </div>
+    );
+  }
   let page: ReactElement;
-  if (!loaded) page = <Loading />;
-  else if (!site) page = <SetUp />;
+  if (!loaded || !site) page = <Loading />;
   else {
     switch (view) {
       case 'capture':
@@ -389,7 +433,7 @@ function Shell(): ReactElement {
         </div>
       ) : null}
       {page}
-      {site && loaded ? <AskDomesday hideLauncher={view === 'capture'} /> : null}
+      {site && loaded ? <AskDomesday /> : null}
       {tourOpen && site ? <Tour role={person?.role} name={person?.name ?? null} onClose={closeTour} /> : null}
       <Toasts />
     </div>

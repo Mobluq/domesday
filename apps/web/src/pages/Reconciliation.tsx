@@ -20,7 +20,7 @@ import {
 import { useData, usePersona, useToast } from '../data/store';
 import type { Line } from '../data/types';
 import { saveFile, urlFor } from '../runtime/media';
-import { Btn, Chip, EvidenceFrame, Label, Note } from '../ui/bits';
+import { Btn, Chip, EvidenceFrame, Note } from '../ui/bits';
 import { CameraHint } from './Cameras';
 import { go } from '../route';
 
@@ -41,7 +41,7 @@ export function ReconciliationPage(): ReactElement {
     return (
       <main className="page page--narrow">
         <div className="stack-l" style={{ paddingBlock: '40px' }}>
-          <Label>RECONCILIATION · {site.name.toUpperCase()}</Label>
+          <p className="kicker">{site.name} · Reconciliation</p>
           <h1 className="display-m" style={{ margin: 0 }}>
             Add the register to check this walk against the books
           </h1>
@@ -110,9 +110,9 @@ export function ReconciliationPage(): ReactElement {
     <main className="page">
       <div className="page-head" style={{ paddingTop: 40 }}>
         <div className="page-head__text" style={{ gap: 12 }}>
-          <Label>
-            {site.name.toUpperCase()} · WALK OF {walkDate.toUpperCase()} AGAINST THE REGISTER IMPORTED ON {fmtDayMonth(register.importedAt).toUpperCase()}
-          </Label>
+          <p className="kicker">
+            {site.name} · walk of {walkDate} against the register imported on {fmtDayMonth(register.importedAt)}
+          </p>
           <h1 className="display-l">
             {notSeen.length
               ? `${plural(notSeen.length, 'register line', 'register lines')} not seen at ${site.name}, with a book value of ${money(result.notSeenValueKobo)}`
