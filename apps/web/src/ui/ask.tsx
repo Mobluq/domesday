@@ -4,6 +4,7 @@ import { applyChange, describeChange, resolveChanges, splitAnswer, type Resolved
 import { canLabel } from '../data/actions';
 import { useData, usePersona, useToast } from '../data/store';
 import { Icon } from './icons';
+import { Orb } from './orb';
 
 /** Ask from anywhere: opens the panel and, given a question, asks it straight away. */
 export function openAsk(question?: string): void {
@@ -193,7 +194,10 @@ export function AskDomesday(): ReactElement | null {
     <section className="ask" role="dialog" aria-label="Ask about the inventory">
       <header className="ask__head">
         <div className="stack-xs" style={{ minWidth: 0, flex: 1 }}>
-          <h2 className="ask__title">Ask Domesday AI</h2>
+          <h2 className="ask__title">
+            <Orb size={22} thinking={busy} />
+            Ask Domesday AI
+          </h2>
           <p className="ask__sub">{busy ? 'Reading the walk and the register…' : `${site.name}. Answers come from the walks and the register.`}</p>
         </div>
         <div className="ask__tools">
@@ -242,10 +246,13 @@ export function AskDomesday(): ReactElement | null {
           <p className="ui-body muted">Domesday AI isn't connected in this view. On the website, it uses the Anthropic key set in Vercel.</p>
         ) : turns.length === 0 ? (
           <div className="stack-m">
-            <p className="ui-body muted">
-              Ask about anything on this site: counts, rooms, condition, values, what changed and what the books say.
-              {canChange ? ' You can also ask it to fix a line, reject a duplicate, open an investigation or add a room.' : ''}
-            </p>
+            <div className="ask__empty">
+              <Orb size={34} thinking={busy} />
+              <p className="ui-body muted">
+                Ask about anything on this site: counts, rooms, condition, values, what changed and what the books say.
+                {canChange ? ' You can also ask it to fix a line, reject a duplicate, open an investigation or add a room.' : ''}
+              </p>
+            </div>
             <div className="ask__ideas">
               {[...suggestions(data), ...(canChange ? ['Open an investigation for everything not seen, owned by the site manager, due in a week'] : [])].slice(0, 6).map((s) => (
                 <button key={s} type="button" className="ask__idea" onClick={() => void send(s)}>
@@ -273,6 +280,7 @@ export function AskDomesday(): ReactElement | null {
             <div key={i} className="ask__a">
               <span className="ask__tag" aria-hidden="true">
                 A.
+                <Orb size={14} />
               </span>
               <div className="ask__text">
                 <Answer text={display} />
@@ -334,6 +342,7 @@ export function AskDomesday(): ReactElement | null {
           <div className="ask__a" data-streaming>
             <span className="ask__tag" aria-hidden="true">
               A.
+              <Orb size={14} thinking />
             </span>
             <div className="ask__text">{splitAnswer(answer).display ? <Answer text={splitAnswer(answer).display} /> : <p className="ask__wait">Reading the records…</p>}</div>
           </div>

@@ -53,8 +53,10 @@ Figures sit on dotted leaders.
 ## The assistant
 
 Domesday AI is labelled by name, and its answers are set as a transcript: Q. and A., the way the
-survey recorded sworn answers. No orb, no glow, no gradient. What the page works out by itself
-(what needs attention) is never presented as the assistant's.
+survey recorded sworn answers. Its one mark is the orb, a small lit sphere that turns slowly, and
+faster while an answer is loading (see the exception under Banned). The orb sits beside the
+panel's title, in the empty panel, beside each A. and on the top bar button that opens the panel.
+What the page works out by itself (what needs attention) is never presented as the assistant's.
 
 ## Components
 
@@ -69,3 +71,9 @@ Glowing orbs, gradients, glass, grain, neon, lime, purple, pill badges, chips, e
 uppercase mono kickers, the italic accent word, three equal columns, bento grids, drop shadows,
 looping animation (a spinner only while something is actually loading; the model settles once), shimmer text, blinking
 carets, dark hero bands with grid textures, "elevate / seamless / unleash / next-gen".
+
+**The one deliberate exception is the orb.** It is kept at the owner's request as the assistant's
+mark, so it breaks this list on purpose: it glows, it is a lime and aqua gradient and it turns
+without stopping. It is used only for the assistant (the Ask Domesday AI panel and the top bar
+button that opens it), never as decoration anywhere else, and it holds still when reduced motion
+is turned on.

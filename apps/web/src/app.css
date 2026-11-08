@@ -364,8 +364,9 @@ td .cam-hint { margin-right: 8px; }
 .mainnav__link[data-done] .mainnav__n { color: var(--text); }
 .mainnav__link[data-done] .mainnav__n .dms-icon { width: 14px; height: 14px; stroke-width: 2.2; vertical-align: -2px; }
 .mainnav__count { border-radius: 2px; }
-.topbar__ask { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 10px; border: 1px solid var(--border-control); border-radius: 2px; background: var(--surface-raised); color: var(--text); font: 700 14px/20px var(--font-sans); cursor: pointer; white-space: nowrap; }
+.topbar__ask { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 10px 0 9px; border: 1px solid var(--border-control); border-radius: 2px; background: var(--surface-raised); color: var(--text); font: 700 14px/20px var(--font-sans); cursor: pointer; white-space: nowrap; }
 .topbar__ask:hover { background: var(--row-hover); }
+.topbar__ask .orb { margin-right: 2px; }
 @media (max-width: 1279px) { .topbar__ask-more, .topbar__ask .dms-kbd { display: none; } }
 @media (max-width: 1399px) { .topbar__site { display: none; } }
 @media (max-width: 1199px) { .persona__button .persona__who { display: none; } }
@@ -467,12 +468,24 @@ td .cam-hint { margin-right: 8px; }
 .activity__icon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--rule-strong); color: var(--text-secondary); background: var(--surface); }
 .activity__meta { font: 400 12px/16px var(--font-sans); color: var(--text-tertiary); }
 
+/* The orb: a small lit sphere that turns, faster while Claude thinks */
+.orb { --orb-size: 28px; position: relative; display: inline-block; flex: none; width: var(--orb-size); height: var(--orb-size); border-radius: 50%; isolation: isolate; vertical-align: middle; }
+.orb::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, #c6f432, #5ce1e6 30%, #0e1210 48%, #c6f432 64%, #ecff8f 82%, #c6f432); animation: orb-spin 7s linear infinite; }
+.orb::after { content: ""; position: absolute; inset: -30%; z-index: -1; border-radius: 50%; background: radial-gradient(circle, rgba(198, 244, 50, 0.45), rgba(92, 225, 230, 0.12) 45%, transparent 68%); animation: orb-breathe 3.2s ease-in-out infinite; }
+.orb > i { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0) 36%), radial-gradient(circle at 70% 82%, rgba(14, 18, 16, 0.5), transparent 58%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16); }
+.orb[data-thinking]::before { animation-duration: 1.1s; }
+.orb[data-thinking]::after { animation-duration: 0.9s; }
+@keyframes orb-spin { to { transform: rotate(360deg); } }
+@keyframes orb-breathe { 50% { transform: scale(1.18); opacity: 0.6; } }
+/* With reduced motion the orb holds still: no turning, no breathing */
+@media (prefers-reduced-motion: reduce) { .orb::before, .orb::after { animation: none; } }
+
 /* Ask Domesday AI: a side sheet, set as a transcript (Q. and A., as the survey recorded answers) */
 .ask { position: fixed; z-index: 55; top: 0; right: 0; bottom: 0; width: min(480px, 100vw); box-sizing: border-box; display: flex; flex-direction: column; background: var(--surface-raised); border-left: 1px solid var(--text); padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); padding-right: env(safe-area-inset-right, 0px); animation: sheet-in 220ms cubic-bezier(0.23, 1, 0.32, 1); }
 @keyframes sheet-in { from { transform: translateX(16px); opacity: 0; } }
 @media (max-width: 560px) { .ask { width: 100vw; border-left: 0; } }
 .ask__head { display: flex; align-items: flex-start; gap: 16px; padding: 20px 20px 16px; border-bottom: 1px solid var(--text); }
-.ask__title { font-family: var(--font-display); font-weight: 500; font-size: 28px; line-height: 32px; letter-spacing: -0.015em; font-variation-settings: 'opsz' 28; }
+.ask__title { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 500; font-size: 28px; line-height: 32px; letter-spacing: -0.015em; font-variation-settings: 'opsz' 28; }
 .ask__sub { margin: 0; font: 400 13px/18px var(--font-sans); color: var(--text-secondary); }
 .ask__tools { display: flex; gap: 16px; padding-top: 4px; }
 .ask__perm { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; padding: 12px 20px; border-bottom: 1px solid var(--rule); cursor: pointer; }
@@ -483,8 +496,10 @@ td .cam-hint { margin-right: 8px; }
 .ask__ideas { display: flex; flex-direction: column; border-top: 1px solid var(--rule); }
 .ask__idea { padding: 12px 0; border: 0; border-bottom: 1px solid var(--rule); background: none; color: var(--text); font: 400 15px/22px var(--font-sans); text-align: left; cursor: pointer; }
 .ask__idea:hover { text-decoration: underline; text-underline-offset: 3px; }
-.ask__q, .ask__a { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 4px; align-items: baseline; }
-.ask__tag { font-family: var(--font-display); font-weight: 500; font-size: 19px; color: var(--rubric-text); }
+.ask__q, .ask__a { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 4px; align-items: baseline; }
+.ask__tag { font-family: var(--font-display); font-weight: 500; font-size: 19px; color: var(--rubric-text); white-space: nowrap; }
+.ask__tag .orb { margin-left: 6px; }
+.ask__empty { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 4px; align-items: center; }
 .ask__q p { margin: 0; font: 700 15px/22px var(--font-sans); white-space: pre-wrap; overflow-wrap: anywhere; }
 .ask__text { min-width: 0; font-family: var(--font-display); font-size: 17px; line-height: 26px; font-variation-settings: 'opsz' 16; overflow-wrap: anywhere; }
 .ask__text p { margin: 0 0 10px; }

@@ -21,6 +21,7 @@ import { Hallmark, Wordmark } from './ui/brand';
 import { Gate } from './ui/gate';
 import { Icon } from './ui/icons';
 import { AskDomesday, openAsk } from './ui/ask';
+import { Orb } from './ui/orb';
 import { markTourSeen, Tour, tourSeen } from './ui/tour';
 
 const TOUR_EVENT = 'domesday:tour';
@@ -160,6 +161,7 @@ function TopBar({ view }: { view: ViewId }): ReactElement {
         <div className="topbar__end">
           {site ? (
             <button type="button" className="topbar__ask" onClick={() => openAsk()} aria-label="Ask about the inventory" title="Ask Domesday AI (Ctrl K)">
+              <Orb size={18} />
               Ask<span className="topbar__ask-more">Domesday AI</span>
               <kbd className="dms-kbd">Ctrl K</kbd>
             </button>
